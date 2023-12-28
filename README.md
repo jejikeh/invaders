@@ -1,2 +1,3 @@
-# jai_invaders-in-odin
-this is jai invaders example rewritten in jai
+# Jai Invaders rewritten in Odin
+
+This is clone of Invaders example from Jai Language developed by Jonathan Blow. It's rewritten in [Odin](https://odin-lang.org/) language.
