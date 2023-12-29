@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"math"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -14,9 +15,13 @@ const WindowWidth = Aspect * VerticalPixels
 const WindowHeight = VerticalPixels
 const WindowMinimalSizeDelimeter = 1
 
-const ResoursePath = "resources/"
+const ResourseFolder = "resources/"
+const FontFolder = ResourseFolder + "fonts/"
 
 const EntitiesBaseSize = 0.3
+
+const BigFontSize = 192
+const SmallFontSize = BigFontSize * 2 / 3
 
 type GameTextures struct {
 	Player *rl.Texture2D
@@ -126,25 +131,34 @@ type Invader struct {
 
 func (invader *Invader) update() {
 	invader.ShadowHeight = float32(math.Sin(float64(rl.GetTime())/1.2)) * 8
+
+	if rl.IsKeyPressed(rl.KeyA) {
+		invader.Visible = !invader.Visible
+	}
 }
 
 type Player struct {
 	*Entity
-	Speed float32
-	Score int
-	Lives int
+	Speed        float32
+	Score        int
+	Lives        int
+	Dx           float32
+	Dy           float32
+	CurrentSpeed float32
 }
 
 func newPlayer(texture rl.Texture2D) *Player {
 	return &Player{
 		Entity: newEntity(
 			texture,
-			rl.NewVector2(WindowWidth/2, WindowHeight/2),
-			rl.NewVector2(1, 1),
+			rl.NewVector2(WindowWidth/2, WindowHeight/1.2),
+			rl.NewVector2(EntitiesBaseSize, EntitiesBaseSize),
 			.0,
 			rl.RayWhite,
 		),
 		Speed: 10,
+		Lives: 3,
+		Score: 0,
 	}
 }
 
@@ -155,8 +169,11 @@ func main() {
 	renderTexture := initRenderTexture()
 	defer rl.UnloadRenderTexture(renderTexture)
 
-	font := initFont()
-	defer rl.UnloadFont(font)
+	bigFont := initFont(BigFontSize)
+	defer rl.UnloadFont(bigFont)
+
+	smallFont := initFont(SmallFontSize)
+	defer rl.UnloadFont(smallFont)
 
 	gameTextures := initGameTextures()
 	defer unloadGameTextures(gameTextures)
@@ -167,6 +184,8 @@ func main() {
 
 	invadersManager.Spawn(Dude, rl.NewVector2(WindowWidth/2, WindowHeight/4))
 	invadersManager.Spawn(Alien, rl.NewVector2(WindowWidth/2, WindowHeight/2))
+
+	player := newPlayer(*gameTextures.Player)
 
 	for !rl.WindowShouldClose() {
 		if rl.IsKeyPressed(rl.KeyEscape) {
@@ -180,18 +199,28 @@ func main() {
 		invadersManager.Draw()
 		invadersManager.Update()
 
+		player.update()
+		renderEntity(player.Entity)
+
+		rl.DrawTextEx(smallFont, fmt.Sprintf("Frames: %d", rl.GetFPS()), rl.NewVector2(WindowWidth-130, 10), BigFontSize*0.2, 0, rl.RayWhite)
+		rl.DrawTextEx(smallFont, fmt.Sprintf("Score: %d", player.Score), rl.NewVector2(10, 10), BigFontSize*0.2, 0, rl.RayWhite)
+
 		rl.EndTextureMode()
 
 		drawRenderTexture(renderTexture)
 	}
 }
 
-func updatePlayer(player *Player) {
+func (player *Player) update() {
 	if player == nil {
 		return
 	}
 
-	player.ShadowHeight += float32(math.Sin(float64(rl.GetTime())))
+	player.ShadowHeight = float32(math.Sin(float64(rl.GetTime())/1.2)) * 8
+}
+
+func ulerp(tar float32, pos float32, perc float32) float32 {
+	return (1-perc)*tar + perc*pos
 }
 
 func initWindowAndOterStuff() {
@@ -245,14 +274,14 @@ func calculateDestinationRectangle() rl.Rectangle {
 	return rl.NewRectangle(x0, y0, x1, y1)
 }
 
-func initFont() rl.Font {
-	return rl.LoadFont(ResoursePath + "font.ttf")
+func initFont(size int32) rl.Font {
+	return rl.LoadFontEx(FontFolder+"Martel-Regular.ttf", size, nil)
 }
 
 func initGameTextures() *GameTextures {
-	player := rl.LoadTexture(ResoursePath + "player.png")
-	dude := rl.LoadTexture(ResoursePath + "dude.png")
-	alien := rl.LoadTexture(ResoursePath + "alien.png")
+	player := rl.LoadTexture(ResourseFolder + "player.png")
+	dude := rl.LoadTexture(ResourseFolder + "dude.png")
+	alien := rl.LoadTexture(ResourseFolder + "alien.png")
 
 	gameTexture := new(GameTextures)
 	gameTexture.Player = &player
