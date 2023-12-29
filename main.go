@@ -1,6 +1,9 @@
 package main
 
 import (
+	"errors"
+	"math"
+
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -13,8 +16,71 @@ const WindowMinimalSizeDelimeter = 1
 
 const ResoursePath = "resources/"
 
+const EntitiesBaseSize = 0.3
+
 type GameTextures struct {
-	Player rl.Texture2D
+	Player *rl.Texture2D
+	Dude   *rl.Texture2D
+	Alien  *rl.Texture2D
+}
+
+func (g *GameTextures) getInvaderTexture(invaderType InvaderType) (*rl.Texture2D, error) {
+	switch invaderType {
+	case Dude:
+		return g.Dude, nil
+	case Alien:
+		return g.Alien, nil
+	}
+
+	return nil, errors.New("Invader type not found")
+}
+
+type InvadersManager struct {
+	Invaders []*Invader
+	Textures *GameTextures
+}
+
+func (invadersManager *InvadersManager) Spawn(invaderType InvaderType, position rl.Vector2) *Invader {
+	texture, err := invadersManager.Textures.getInvaderTexture(invaderType)
+	if err != nil {
+		panic(err)
+	}
+
+	invader := &Invader{
+		Entity: newEntity(
+			*texture,
+			position,
+			rl.NewVector2(EntitiesBaseSize, EntitiesBaseSize),
+			180,
+			rl.RayWhite,
+		),
+		Type: invaderType,
+	}
+
+	invadersManager.Invaders = append(invadersManager.Invaders, invader)
+
+	return invader
+}
+
+func (invadersManager *InvadersManager) Kill(invader *Invader) {
+	for i, en := range invadersManager.Invaders {
+		if en == invader {
+			invadersManager.Invaders = append(invadersManager.Invaders[:i], invadersManager.Invaders[i+1:]...)
+			break
+		}
+	}
+}
+
+func (invadersManager *InvadersManager) Draw() {
+	for _, invader := range invadersManager.Invaders {
+		renderEntity(invader.Entity)
+	}
+}
+
+func (invadersManager *InvadersManager) Update() {
+	for _, invader := range invadersManager.Invaders {
+		invader.update()
+	}
 }
 
 type Entity struct {
@@ -46,6 +112,42 @@ func newEntity(
 	return entity
 }
 
+type InvaderType int
+
+const (
+	Dude InvaderType = iota
+	Alien
+)
+
+type Invader struct {
+	*Entity
+	Type InvaderType
+}
+
+func (invader *Invader) update() {
+	invader.ShadowHeight = float32(math.Sin(float64(rl.GetTime())/1.2)) * 8
+}
+
+type Player struct {
+	*Entity
+	Speed float32
+	Score int
+	Lives int
+}
+
+func newPlayer(texture rl.Texture2D) *Player {
+	return &Player{
+		Entity: newEntity(
+			texture,
+			rl.NewVector2(WindowWidth/2, WindowHeight/2),
+			rl.NewVector2(1, 1),
+			.0,
+			rl.RayWhite,
+		),
+		Speed: 10,
+	}
+}
+
 func main() {
 	initWindowAndOterStuff()
 	defer rl.CloseWindow()
@@ -59,13 +161,12 @@ func main() {
 	gameTextures := initGameTextures()
 	defer unloadGameTextures(gameTextures)
 
-	player := newEntity(
-		gameTextures.Player,
-		rl.NewVector2(WindowWidth/2, WindowHeight/2),
-		rl.NewVector2(.5, .5),
-		.0,
-		rl.RayWhite,
-	)
+	invadersManager := &InvadersManager{
+		Textures: gameTextures,
+	}
+
+	invadersManager.Spawn(Dude, rl.NewVector2(WindowWidth/2, WindowHeight/4))
+	invadersManager.Spawn(Alien, rl.NewVector2(WindowWidth/2, WindowHeight/2))
 
 	for !rl.WindowShouldClose() {
 		if rl.IsKeyPressed(rl.KeyEscape) {
@@ -76,24 +177,21 @@ func main() {
 		rl.BeginTextureMode(renderTexture)
 		renderGradientBackground()
 
-		if rl.IsKeyPressed(rl.KeySpace) {
-			player.Visible = !player.Visible
-		}
-
-		if rl.IsKeyPressed(rl.KeyR) {
-			player = nil
-		}
-
-		if player != nil {
-			player.Rotation += 1
-		}
-
-		renderEntity(player)
+		invadersManager.Draw()
+		invadersManager.Update()
 
 		rl.EndTextureMode()
 
 		drawRenderTexture(renderTexture)
 	}
+}
+
+func updatePlayer(player *Player) {
+	if player == nil {
+		return
+	}
+
+	player.ShadowHeight += float32(math.Sin(float64(rl.GetTime())))
 }
 
 func initWindowAndOterStuff() {
@@ -114,7 +212,7 @@ func initWindowAndOterStuff() {
 
 func initRenderTexture() rl.RenderTexture2D {
 	renderTexture := rl.LoadRenderTexture(WindowWidth, WindowHeight)
-	rl.SetTextureFilter(renderTexture.Texture, rl.FilterPoint)
+	rl.SetTextureFilter(renderTexture.Texture, rl.TextureFilterLinear)
 
 	return renderTexture
 }
@@ -151,14 +249,23 @@ func initFont() rl.Font {
 	return rl.LoadFont(ResoursePath + "font.ttf")
 }
 
-func initGameTextures() GameTextures {
-	return GameTextures{
-		Player: rl.LoadTexture(ResoursePath + "player.png"),
-	}
+func initGameTextures() *GameTextures {
+	player := rl.LoadTexture(ResoursePath + "player.png")
+	dude := rl.LoadTexture(ResoursePath + "dude.png")
+	alien := rl.LoadTexture(ResoursePath + "alien.png")
+
+	gameTexture := new(GameTextures)
+	gameTexture.Player = &player
+	gameTexture.Dude = &dude
+	gameTexture.Alien = &alien
+
+	return gameTexture
 }
 
-func unloadGameTextures(gameTextures GameTextures) {
-	rl.UnloadTexture(gameTextures.Player)
+func unloadGameTextures(gameTextures *GameTextures) {
+	rl.UnloadTexture(*gameTextures.Player)
+	rl.UnloadTexture(*gameTextures.Dude)
+	rl.UnloadTexture(*gameTextures.Alien)
 }
 
 func renderGradientBackground() {
@@ -183,6 +290,8 @@ func renderGradientBackground() {
 	)
 }
 
+// Create a color from 0 to 255 using percentage
+// TODO: remove this and move to 255 values
 func c(v float32) uint8 {
 	return uint8(v * 255)
 }
@@ -192,21 +301,22 @@ func renderEntity(entity *Entity) {
 		return
 	}
 
+	entityHeight := float32(math.Abs(float64(entity.ShadowHeight))) + 2.5
+
 	// render shadow
 	renderTexture(
 		entity.Texture,
-		rl.Vector2Add(
-			entity.Position,
-			rl.NewVector2(entity.ShadowHeight, entity.ShadowHeight)),
-		entity.Size,
+		rl.Vector2AddValue(entity.Position, entityHeight),
+		rl.Vector2AddValue(entity.Size, entityHeight/100),
 		entity.Rotation,
-		rl.Black,
+		rl.NewColor(c(.1), c(.1), c(.1), c(1/entityHeight)),
 	)
 
+	// render entity
 	renderTexture(
 		entity.Texture,
-		entity.Position,
-		entity.Size,
+		rl.Vector2Subtract(entity.Position, rl.NewVector2(0, entityHeight)),
+		rl.Vector2AddValue(entity.Size, entityHeight/100),
 		entity.Rotation,
 		entity.Tint,
 	)
