@@ -8,6 +8,8 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
+// TODO: Create a okay easing functions
+
 const Aspect = 224.0 / 288.0
 const VerticalPixels = 720
 
@@ -29,6 +31,8 @@ type GameTextures struct {
 	Alien  *rl.Texture2D
 }
 
+var Textures *GameTextures
+
 func (g *GameTextures) getInvaderTexture(invaderType InvaderType) (*rl.Texture2D, error) {
 	switch invaderType {
 	case Dude:
@@ -42,11 +46,10 @@ func (g *GameTextures) getInvaderTexture(invaderType InvaderType) (*rl.Texture2D
 
 type InvadersManager struct {
 	Invaders []*Invader
-	Textures *GameTextures
 }
 
 func (invadersManager *InvadersManager) Spawn(invaderType InvaderType, position rl.Vector2) *Invader {
-	texture, err := invadersManager.Textures.getInvaderTexture(invaderType)
+	texture, err := Textures.getInvaderTexture(invaderType)
 	if err != nil {
 		panic(err)
 	}
@@ -85,7 +88,82 @@ func (invadersManager *InvadersManager) Draw() {
 func (invadersManager *InvadersManager) Update() {
 	for _, invader := range invadersManager.Invaders {
 		invader.update()
+		invader.updateEffects()
 	}
+}
+
+type EffectType int
+
+const (
+	None EffectType = iota
+	Respawn
+)
+
+type EntityEffect interface {
+	getEntity() *Entity
+	getLifetime() float32
+	update()
+	unset()
+	getType() EffectType
+}
+
+const RespawnEffectDefaultLifetime = 1
+
+type RespanwEffect struct {
+	Entity   *Entity
+	Lifetime float32
+}
+
+func (ef *RespanwEffect) getEntity() *Entity {
+	return ef.Entity
+}
+
+func (ef *RespanwEffect) getLifetime() float32 {
+	return ef.Lifetime
+}
+
+func (ef *RespanwEffect) unset() {
+	ef.Lifetime = 0
+	ef.Entity.Tint = rl.RayWhite
+	ef.Entity.removeEffect(ef)
+}
+
+func (ef *RespanwEffect) update() {
+	ef.Lifetime -= rl.GetFrameTime()
+
+	if ef.Lifetime <= 0 {
+		ef.unset()
+		return
+	}
+
+	// FIXME: Make it smooth and beautiful
+	tintValue := float32(math.Sin(float64(p(1, RespawnEffectDefaultLifetime-ef.Lifetime) * 10)))
+
+	// TODO: Maybe more interesting effect visualization?
+	ef.Entity.Tint = rl.NewColor(c(tintValue), c(tintValue), c(tintValue), c(tintValue))
+
+	shadowTintValue := float32(math.Abs(float64(tintValue / 4)))
+	ef.Entity.ShadowTint = rl.NewColor(c(.1), c(.1), c(.1), c(shadowTintValue))
+}
+
+func (ef *RespanwEffect) getType() EffectType {
+	return Respawn
+}
+
+func spike(t float32) float32 {
+	if t <= .5 {
+		return easeIn(t / .5)
+	}
+
+	return easeIn(flip(t) / .5)
+}
+
+func flip(t float32) float32 {
+	return 1 - t
+}
+
+func easeIn(t float32) float32 {
+	return t * t
 }
 
 type Entity struct {
@@ -95,7 +173,38 @@ type Entity struct {
 	Rotation     float32
 	Tint         rl.Color
 	ShadowHeight float32
+	ShadowTint   rl.Color
 	Visible      bool
+	Effects      []EntityEffect
+}
+
+func (entity *Entity) addEffect(effect EntityEffect) {
+	entity.Effects = append(entity.Effects, effect)
+}
+
+func (entity *Entity) removeEffect(effect EntityEffect) {
+	for i, ef := range entity.Effects {
+		if ef == effect {
+			entity.Effects = append(entity.Effects[:i], entity.Effects[i+1:]...)
+			break
+		}
+	}
+}
+
+func (entity *Entity) updateEffects() {
+	for _, effect := range entity.Effects {
+		effect.update()
+	}
+}
+
+func (entity *Entity) containsEffectOfType(effectType EffectType) bool {
+	for _, effect := range entity.Effects {
+		if effect.getType() == effectType {
+			return true
+		}
+	}
+
+	return false
 }
 
 func newEntity(
@@ -112,7 +221,12 @@ func newEntity(
 	entity.Rotation = rotation
 	entity.Tint = tint
 	entity.ShadowHeight = 5
+	entity.ShadowTint = rl.NewColor(c(.1), c(.1), c(.1), c(.1))
 	entity.Visible = true
+	entity.addEffect(&RespanwEffect{
+		Entity:   entity,
+		Lifetime: RespawnEffectDefaultLifetime,
+	})
 
 	return entity
 }
@@ -147,10 +261,10 @@ type Player struct {
 	CurrentSpeed float32
 }
 
-func newPlayer(texture rl.Texture2D) *Player {
+func newPlayer() *Player {
 	return &Player{
 		Entity: newEntity(
-			texture,
+			*Textures.Player,
 			rl.NewVector2(WindowWidth/2, WindowHeight/1.2),
 			rl.NewVector2(EntitiesBaseSize, EntitiesBaseSize),
 			.0,
@@ -172,20 +286,19 @@ func main() {
 	bigFont := initFont(BigFontSize)
 	defer rl.UnloadFont(bigFont)
 
+	// TODO: Make font manager as global variable or just move small and big fonts to global scope
 	smallFont := initFont(SmallFontSize)
 	defer rl.UnloadFont(smallFont)
 
-	gameTextures := initGameTextures()
-	defer unloadGameTextures(gameTextures)
+	Textures = initGameTextures()
+	defer unloadGameTextures(Textures)
 
-	invadersManager := &InvadersManager{
-		Textures: gameTextures,
-	}
+	invadersManager := &InvadersManager{}
 
 	invadersManager.Spawn(Dude, rl.NewVector2(WindowWidth/2, WindowHeight/4))
 	invadersManager.Spawn(Alien, rl.NewVector2(WindowWidth/2, WindowHeight/2))
 
-	player := newPlayer(*gameTextures.Player)
+	player := newPlayer()
 
 	for !rl.WindowShouldClose() {
 		if rl.IsKeyPressed(rl.KeyEscape) {
@@ -200,6 +313,7 @@ func main() {
 		invadersManager.Update()
 
 		player.update()
+		player.updateEffects()
 		renderEntity(player.Entity)
 
 		rl.DrawTextEx(smallFont, fmt.Sprintf("Frames: %d", rl.GetFPS()), rl.NewVector2(WindowWidth-130, 10), BigFontSize*0.2, 0, rl.RayWhite)
@@ -217,6 +331,13 @@ func (player *Player) update() {
 	}
 
 	player.ShadowHeight = float32(math.Sin(float64(rl.GetTime())/1.2)) * 8
+
+	if rl.IsKeyPressed(rl.KeyP) {
+		player.addEffect(&RespanwEffect{
+			Entity:   player.Entity,
+			Lifetime: RespawnEffectDefaultLifetime,
+		})
+	}
 }
 
 func ulerp(tar float32, pos float32, perc float32) float32 {
@@ -325,12 +446,21 @@ func c(v float32) uint8 {
 	return uint8(v * 255)
 }
 
+func p(t float32, b float32) float32 {
+	return t / (t + b)
+}
+
 func renderEntity(entity *Entity) {
 	if entity == nil || !entity.Visible {
 		return
 	}
 
 	entityHeight := float32(math.Abs(float64(entity.ShadowHeight))) + 2.5
+	shadowColor := entity.ShadowTint
+
+	if !entity.containsEffectOfType(Respawn) {
+		shadowColor.A = c(1 / entityHeight)
+	}
 
 	// render shadow
 	renderTexture(
@@ -338,7 +468,7 @@ func renderEntity(entity *Entity) {
 		rl.Vector2AddValue(entity.Position, entityHeight),
 		rl.Vector2AddValue(entity.Size, entityHeight/100),
 		entity.Rotation,
-		rl.NewColor(c(.1), c(.1), c(.1), c(1/entityHeight)),
+		shadowColor,
 	)
 
 	// render entity
