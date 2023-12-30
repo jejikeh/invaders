@@ -41,7 +41,7 @@ func (g *GameTextures) getInvaderTexture(invaderType InvaderType) (*rl.Texture2D
 		return g.Alien, nil
 	}
 
-	return nil, errors.New("Invader type not found")
+	return nil, errors.New("invader type not found.")
 }
 
 type InvadersManager struct {
@@ -82,6 +82,14 @@ func (invadersManager *InvadersManager) Kill(invader *Invader) {
 func (invadersManager *InvadersManager) Draw() {
 	for _, invader := range invadersManager.Invaders {
 		renderEntity(invader.Entity)
+	}
+}
+
+// TODO: Think about render pipeline. How to draw this stuff more 'okeyish?'
+func (invadersManager *InvadersManager) DrawShadow() {
+	for _, invader := range invadersManager.Invaders {
+		// TODO: Rename renderEntityShadow to just renderShadow?
+		invader.Entity.renderEntityShadow()
 	}
 }
 
@@ -246,9 +254,16 @@ type Invader struct {
 func (invader *Invader) update() {
 	invader.ShadowHeight = float32(math.Sin(float64(rl.GetTime())/1.2)) * 8
 
-	if rl.IsKeyPressed(rl.KeyA) {
-		invader.Visible = !invader.Visible
-	}
+	// if rl.IsKeyPressed(rl.KeyA) {
+	// invader.Visible = !invader.Visible
+	// }
+
+	// TODO: Make it smooth and beautiful
+	// This is fly 'simulation'. The same logic copied in player.update()
+	// NOTE: Maybe it will be beter to move this to render or something like that
+	// It even can be a separate effect though
+	invader.Position.X += float32(math.Sin(float64(float32(rl.GetTime()*2)))) / 10
+	invader.Position.Y += float32(math.Sin(float64(float32(rl.GetTime()*2)))) / 10
 }
 
 type Player struct {
@@ -256,9 +271,10 @@ type Player struct {
 	Speed        float32
 	Score        int
 	Lives        int
-	Dx           float32
-	Dy           float32
-	CurrentSpeed float32
+	MaxSpeed     float32
+	Acceleration float32
+	Friction     float32
+	Velocity     rl.Vector2
 }
 
 func newPlayer() *Player {
@@ -270,11 +286,15 @@ func newPlayer() *Player {
 			.0,
 			rl.RayWhite,
 		),
-		Speed: 10,
-		Lives: 3,
-		Score: 0,
+		Speed:        5,
+		Lives:        3,
+		MaxSpeed:     400,
+		Acceleration: 1500,
+		Friction:     600 / 2,
 	}
 }
+
+var textureCircle rl.Texture2D
 
 func main() {
 	initWindowAndOterStuff()
@@ -300,6 +320,14 @@ func main() {
 
 	player := newPlayer()
 
+	imageCircle := rl.GenImageGradientRadial(16, 16, 0.3, rl.White, rl.Black)
+	textureCircle = rl.LoadTextureFromImage(imageCircle)
+	defer rl.UnloadImage(imageCircle)
+	defer rl.UnloadTexture(textureCircle)
+
+	ps := initFlameParticleSystem()
+	ps.Start()
+
 	for !rl.WindowShouldClose() {
 		if rl.IsKeyPressed(rl.KeyEscape) {
 			rl.CloseWindow()
@@ -308,6 +336,13 @@ func main() {
 
 		rl.BeginTextureMode(renderTexture)
 		renderGradientBackground()
+
+		player.renderEntityShadow()
+		invadersManager.DrawShadow()
+
+		ps.SetOrigin(player.Position)
+		ps.Update()
+		ps.Draw()
 
 		invadersManager.Draw()
 		invadersManager.Update()
@@ -325,23 +360,89 @@ func main() {
 	}
 }
 
-func (player *Player) update() {
-	if player == nil {
+func (p *Player) update() {
+	if p == nil {
 		return
 	}
 
-	player.ShadowHeight = float32(math.Sin(float64(rl.GetTime())/1.2)) * 8
+	p.ShadowHeight = float32(math.Sin(float64(rl.GetTime())/1.2)) * 8
 
 	if rl.IsKeyPressed(rl.KeyP) {
-		player.addEffect(&RespanwEffect{
-			Entity:   player.Entity,
+		p.addEffect(&RespanwEffect{
+			Entity:   p.Entity,
 			Lifetime: RespawnEffectDefaultLifetime,
 		})
 	}
+
+	p.updateMovement()
+
+	p.Position.X += float32(math.Sin(float64(float32(rl.GetTime()*2)))) / 10
+	p.Position.Y += float32(math.Sin(float64(float32(rl.GetTime()*2)))) / 10
+
+	if p.Position.Y > WindowHeight {
+		p.Position.Y = WindowHeight
+	}
+
+	if p.Position.Y < 0 {
+		p.Position.Y = 0
+	}
+
+	if p.Position.X > WindowWidth {
+		p.Position.X = 0
+	}
+
+	if p.Position.X < 0 {
+		p.Position.X = WindowWidth
+	}
 }
 
-func ulerp(tar float32, pos float32, perc float32) float32 {
-	return (1-perc)*tar + perc*pos
+func (p *Player) updateMovement() {
+	input := getInputVector()
+
+	if input.X == 0 && input.Y == 0 {
+		if rl.Vector2Length(p.Velocity) > p.Friction*rl.GetFrameTime() {
+			p.Velocity = rl.Vector2Subtract(
+				p.Velocity,
+				rl.Vector2Multiply(
+					rl.Vector2Normalize(p.Velocity),
+					rl.NewVector2(p.Friction*rl.GetFrameTime(), p.Friction*rl.GetFrameTime()),
+				),
+			)
+		} else {
+			p.Velocity = rl.NewVector2(0, 0)
+		}
+	} else {
+		p.Velocity = rl.Vector2Add(
+			p.Velocity,
+			rl.Vector2Multiply(
+				input,
+				rl.NewVector2(p.Acceleration*rl.GetFrameTime(), p.Acceleration*rl.GetFrameTime()),
+			),
+		)
+
+		p.Velocity.X = rl.Clamp(p.Velocity.X, -p.MaxSpeed, p.MaxSpeed)
+		p.Velocity.Y = rl.Clamp(p.Velocity.Y, -p.MaxSpeed, p.MaxSpeed)
+	}
+
+	p.Position.X += p.Velocity.X * rl.GetFrameTime()
+	p.Position.Y += p.Velocity.Y * rl.GetFrameTime()
+}
+
+func getInputVector() rl.Vector2 {
+	var inputVector rl.Vector2
+	inputVector.X = btof32(rl.IsKeyDown(rl.KeyRight) || rl.IsKeyDown(rl.KeyD)) - btof32(rl.IsKeyDown(rl.KeyLeft) || rl.IsKeyDown(rl.KeyA))
+	inputVector.Y = btof32(rl.IsKeyDown(rl.KeyDown) || rl.IsKeyDown(rl.KeyS)) - btof32(rl.IsKeyDown(rl.KeyUp) || rl.IsKeyDown(rl.KeyW))
+
+	inputVector = rl.Vector2Normalize(inputVector)
+
+	return inputVector
+}
+
+func btof32(b bool) float32 {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 func initWindowAndOterStuff() {
@@ -462,14 +563,14 @@ func renderEntity(entity *Entity) {
 		shadowColor.A = c(1 / entityHeight)
 	}
 
-	// render shadow
-	renderTexture(
-		entity.Texture,
-		rl.Vector2AddValue(entity.Position, entityHeight),
-		rl.Vector2AddValue(entity.Size, entityHeight/100),
-		entity.Rotation,
-		shadowColor,
-	)
+	// // render shadow
+	// renderTexture(
+	// 	entity.Texture,
+	// 	rl.Vector2AddValue(entity.Position, entityHeight),
+	// 	rl.Vector2AddValue(entity.Size, entityHeight/100),
+	// 	entity.Rotation,
+	// 	shadowColor,
+	// )
 
 	// render entity
 	renderTexture(
@@ -478,6 +579,28 @@ func renderEntity(entity *Entity) {
 		rl.Vector2AddValue(entity.Size, entityHeight/100),
 		entity.Rotation,
 		entity.Tint,
+	)
+}
+
+func (entity *Entity) renderEntityShadow() {
+	if entity == nil || !entity.Visible {
+		return
+	}
+
+	entityHeight := float32(math.Abs(float64(entity.ShadowHeight))) + 2.5
+	shadowColor := entity.ShadowTint
+
+	if !entity.containsEffectOfType(Respawn) {
+		shadowColor.A = c(1 / entityHeight)
+	}
+
+	// render shadow
+	renderTexture(
+		entity.Texture,
+		rl.Vector2AddValue(entity.Position, entityHeight),
+		rl.Vector2AddValue(entity.Size, entityHeight/100),
+		entity.Rotation,
+		shadowColor,
 	)
 }
 
@@ -503,4 +626,84 @@ func renderTexture(
 		rotation,
 		tint,
 	)
+}
+
+func initFlameParticleSystem() *ParticleSystem {
+	ps := &ParticleSystem{}
+
+	configFlame1 := EmitterConfig{
+		StartSize:    rl.NewVector2(2, 2),
+		EndSize:      rl.NewVector2(1, 1),
+		Capacity:     100,
+		EmmisionRate: 500,
+		Origin: rl.Vector2{
+			X: 0,
+			Y: 0,
+		},
+		OriginAcceleration: [2]float32{
+			50,
+			100,
+		},
+		Offset: [2]float32{
+			0,
+			10,
+		},
+		Direction: rl.NewVector2(0, -1),
+		DirectionAngle: [2]float32{
+			90,
+			90,
+		},
+		Velocity: [2]float32{
+			30,
+			150,
+		},
+		VelocityAngle: [2]float32{
+			90,
+			90,
+		},
+		StartColor: rl.NewColor(255, 20, 0, 255),
+		EndColor:   rl.NewColor(255, 20, 0, 0),
+		Age: [2]float32{
+			1.0,
+			2.0,
+		},
+		Texture:   textureCircle,
+		BlendMode: rl.BlendAdditive,
+	}
+
+	emitterFlame1 := NewEmitter(configFlame1)
+
+	configFlame2 := configFlame1
+	configFlame2.StartSize = rl.NewVector2(1, 1)
+	configFlame2.EndSize = rl.NewVector2(0, 0)
+	configFlame2.Capacity = 20
+	configFlame2.EmmisionRate = 20
+	configFlame2.StartColor = rl.NewColor(255, 255, 255, 10)
+	configFlame2.EndColor = rl.NewColor(255, 255, 255, 0)
+	configFlame2.Age = [2]float32{
+		0.5,
+		1.0,
+	}
+
+	emitterFlame2 := NewEmitter(configFlame2)
+
+	configSmokeEmitter := configFlame2
+	configSmokeEmitter.StartSize = rl.NewVector2(2, 2)
+	configSmokeEmitter.EndSize = rl.NewVector2(1, 1)
+	configSmokeEmitter.Capacity = 500
+	configSmokeEmitter.EmmisionRate = 100
+	configSmokeEmitter.StartColor = rl.NewColor(125, 125, 125, 30)
+	configSmokeEmitter.EndColor = rl.NewColor(125, 125, 125, 10)
+	configSmokeEmitter.Age = [2]float32{
+		3.0,
+		5.0,
+	}
+
+	smokeEmitter := NewEmitter(configSmokeEmitter)
+
+	ps.Add(emitterFlame1)
+	ps.Add(smokeEmitter)
+	ps.Add(emitterFlame2)
+
+	return ps
 }
