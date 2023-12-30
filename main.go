@@ -9,6 +9,8 @@ import (
 )
 
 // TODO: Create a okay easing functions
+// TODO: Delete emmiters?
+// TODO: Optimize emmiters
 
 const Aspect = 224.0 / 288.0
 const VerticalPixels = 720
@@ -29,6 +31,7 @@ type GameTextures struct {
 	Player *rl.Texture2D
 	Dude   *rl.Texture2D
 	Alien  *rl.Texture2D
+	Rocket *rl.Texture2D
 }
 
 var Textures *GameTextures
@@ -41,7 +44,7 @@ func (g *GameTextures) getInvaderTexture(invaderType InvaderType) (*rl.Texture2D
 		return g.Alien, nil
 	}
 
-	return nil, errors.New("invader type not found.")
+	return nil, errors.New("invader type not found")
 }
 
 type InvadersManager struct {
@@ -158,22 +161,6 @@ func (ef *RespanwEffect) getType() EffectType {
 	return Respawn
 }
 
-func spike(t float32) float32 {
-	if t <= .5 {
-		return easeIn(t / .5)
-	}
-
-	return easeIn(flip(t) / .5)
-}
-
-func flip(t float32) float32 {
-	return 1 - t
-}
-
-func easeIn(t float32) float32 {
-	return t * t
-}
-
 type Entity struct {
 	Texture      *rl.Texture2D
 	Position     rl.Vector2
@@ -268,17 +255,18 @@ func (invader *Invader) update() {
 
 type Player struct {
 	*Entity
-	Speed        float32
-	Score        int
-	Lives        int
-	MaxSpeed     float32
-	Acceleration float32
-	Friction     float32
-	Velocity     rl.Vector2
+	Speed          float32
+	Score          int
+	Lives          int
+	MaxSpeed       float32
+	Acceleration   float32
+	Friction       float32
+	Velocity       rl.Vector2
+	EngineEmitters *ParticleSystem
 }
 
 func newPlayer() *Player {
-	return &Player{
+	player := &Player{
 		Entity: newEntity(
 			*Textures.Player,
 			rl.NewVector2(WindowWidth/2, WindowHeight/1.2),
@@ -286,78 +274,17 @@ func newPlayer() *Player {
 			.0,
 			rl.RayWhite,
 		),
-		Speed:        5,
-		Lives:        3,
-		MaxSpeed:     400,
-		Acceleration: 1500,
-		Friction:     600 / 2,
+		Speed:          5,
+		Lives:          3,
+		MaxSpeed:       400,
+		Acceleration:   1500,
+		Friction:       600 / 2,
+		EngineEmitters: initEngineParticleSystem(rl.NewVector2(WindowWidth/2, WindowHeight/1.2)),
 	}
-}
 
-var textureCircle rl.Texture2D
+	player.EngineEmitters.Start()
 
-func main() {
-	initWindowAndOterStuff()
-	defer rl.CloseWindow()
-
-	renderTexture := initRenderTexture()
-	defer rl.UnloadRenderTexture(renderTexture)
-
-	bigFont := initFont(BigFontSize)
-	defer rl.UnloadFont(bigFont)
-
-	// TODO: Make font manager as global variable or just move small and big fonts to global scope
-	smallFont := initFont(SmallFontSize)
-	defer rl.UnloadFont(smallFont)
-
-	Textures = initGameTextures()
-	defer unloadGameTextures(Textures)
-
-	invadersManager := &InvadersManager{}
-
-	invadersManager.Spawn(Dude, rl.NewVector2(WindowWidth/2, WindowHeight/4))
-	invadersManager.Spawn(Alien, rl.NewVector2(WindowWidth/2, WindowHeight/2))
-
-	player := newPlayer()
-
-	imageCircle := rl.GenImageGradientRadial(16, 16, 0.3, rl.White, rl.Black)
-	textureCircle = rl.LoadTextureFromImage(imageCircle)
-	defer rl.UnloadImage(imageCircle)
-	defer rl.UnloadTexture(textureCircle)
-
-	ps := initFlameParticleSystem()
-	ps.Start()
-
-	for !rl.WindowShouldClose() {
-		if rl.IsKeyPressed(rl.KeyEscape) {
-			rl.CloseWindow()
-			break
-		}
-
-		rl.BeginTextureMode(renderTexture)
-		renderGradientBackground()
-
-		player.renderEntityShadow()
-		invadersManager.DrawShadow()
-
-		ps.SetOrigin(player.Position)
-		ps.Update()
-		ps.Draw()
-
-		invadersManager.Draw()
-		invadersManager.Update()
-
-		player.update()
-		player.updateEffects()
-		renderEntity(player.Entity)
-
-		rl.DrawTextEx(smallFont, fmt.Sprintf("Frames: %d", rl.GetFPS()), rl.NewVector2(WindowWidth-130, 10), BigFontSize*0.2, 0, rl.RayWhite)
-		rl.DrawTextEx(smallFont, fmt.Sprintf("Score: %d", player.Score), rl.NewVector2(10, 10), BigFontSize*0.2, 0, rl.RayWhite)
-
-		rl.EndTextureMode()
-
-		drawRenderTexture(renderTexture)
-	}
+	return player
 }
 
 func (p *Player) update() {
@@ -373,6 +300,14 @@ func (p *Player) update() {
 			Lifetime: RespawnEffectDefaultLifetime,
 		})
 	}
+
+	if rl.IsKeyPressed(rl.KeySpace) {
+		playerRockets.addRocket(p)
+	}
+
+	engineEmitterPosition := rl.NewVector2(p.Position.X-2, p.Position.Y-EntitiesBaseSize)
+	p.EngineEmitters.SetOrigin(engineEmitterPosition)
+	p.EngineEmitters.Update()
 
 	p.updateMovement()
 
@@ -393,6 +328,228 @@ func (p *Player) update() {
 
 	if p.Position.X < 0 {
 		p.Position.X = WindowWidth
+	}
+
+}
+
+func (p *Player) draw() {
+	p.Entity.renderEntityShadow()
+	p.EngineEmitters.Draw()
+	renderEntity(p.Entity)
+}
+
+type Rocket struct {
+	*Entity
+	Speed         float32
+	TrailEmitters *ParticleSystem
+}
+
+func newRocket(player *Player) *Rocket {
+	rocket := &Rocket{
+		Entity: newEntity(
+			*Textures.Rocket,
+			rl.NewVector2(player.Position.X, player.Position.Y-EntitiesBaseSize),
+			rl.NewVector2(EntitiesBaseSize*1.5, EntitiesBaseSize*1.5),
+			.0,
+			rl.RayWhite,
+		),
+		Speed:         300,
+		TrailEmitters: initFlameParticleSystem(player.Position),
+	}
+
+	rocket.TrailEmitters.Start()
+
+	return rocket
+}
+
+type PlayerRockets struct {
+	Rockets []*Rocket
+}
+
+func newPlayerRockets() *PlayerRockets {
+	return &PlayerRockets{
+		Rockets: []*Rocket{},
+	}
+}
+
+func (p *PlayerRockets) addRocket(player *Player) {
+	p.Rockets = append(p.Rockets, newRocket(player))
+}
+
+func (p *PlayerRockets) update() {
+	for i, rocket := range p.Rockets {
+		rocket.update()
+
+		if rocket.Position.Y < -1000 {
+			// TODO: Refactor this. Maybe refactor entire PlayerRockets thing
+			rocket.TrailEmitters.Stop()
+			rocket.TrailEmitters = nil
+
+			if p.Rockets[i] != nil {
+				p.Rockets[i] = nil
+			}
+
+			p.Rockets = append(p.Rockets[:i], p.Rockets[i+1:]...)
+		}
+
+		// TODO: Maybe crate something like event system with "Rocket Collided" and so on
+		// TODO: Or look how it`s was done in jai invaders
+		for _, ii := range invadersManager.Invaders {
+			if ii.CollidesWith(rocket) {
+				invadersManager.Kill(ii)
+				rocket.TrailEmitters.Stop()
+				rocket.TrailEmitters.Stop()
+				rocket.TrailEmitters = nil
+
+				if p.Rockets[i] != nil {
+					p.Rockets[i] = nil
+				}
+
+				p.Rockets = append(p.Rockets[:i], p.Rockets[i+1:]...)
+
+				emitters.Add(initExplosionParticleSystem(rl.NewVector2(rocket.Position.X, rocket.Position.Y)))
+				emitters.Burst()
+
+				return
+			}
+		}
+	}
+}
+
+func (p *PlayerRockets) draw() {
+	for _, rocket := range p.Rockets {
+		rocket.draw()
+	}
+}
+
+func (rocket *Rocket) update() {
+	rocket.Position.Y -= rocket.Speed * float32(rl.GetFrameTime())
+
+	trailEffectPosition := rl.NewVector2(rocket.Position.X+5, rocket.Position.Y+10)
+
+	rocket.TrailEmitters.SetOrigin(trailEffectPosition)
+	rocket.TrailEmitters.Update()
+}
+
+func (i *Invader) CollidesWith(rocket *Rocket) bool {
+	return rl.CheckCollisionRecs(
+		rl.NewRectangle(rocket.Position.X, rocket.Position.Y, float32(rocket.Entity.Texture.Width)*rocket.Size.X, float32(rocket.Entity.Texture.Height)*rocket.Size.Y),
+		rl.NewRectangle(i.Position.X, i.Position.Y, float32(i.Texture.Width)*i.Size.X, float32(i.Texture.Height)*i.Size.Y),
+	)
+}
+
+func (rocket *Rocket) draw() {
+	rocket.Entity.renderEntityShadow()
+	rocket.TrailEmitters.Draw()
+	renderEntity(rocket.Entity)
+}
+
+// TODO: remove that from global scope apparently
+var textureCircle rl.Texture2D
+
+var playerRockets *PlayerRockets
+var invadersManager *InvadersManager
+var emitters *Emitters
+
+func main() {
+	initWindowAndOterStuff()
+	defer rl.CloseWindow()
+
+	renderTexture := initRenderTexture()
+	defer rl.UnloadRenderTexture(renderTexture)
+
+	bigFont := initFont(BigFontSize)
+	defer rl.UnloadFont(bigFont)
+
+	// TODO: Make font manager as global variable or just move small and big fonts to global scope
+	smallFont := initFont(SmallFontSize)
+	defer rl.UnloadFont(smallFont)
+
+	Textures = initGameTextures()
+	defer unloadGameTextures(Textures)
+
+	invadersManager = &InvadersManager{}
+
+	invadersManager.Spawn(Dude, rl.NewVector2(WindowWidth/2, WindowHeight/4))
+	invadersManager.Spawn(Alien, rl.NewVector2(WindowWidth/2, WindowHeight/2))
+
+	player := newPlayer()
+
+	imageCircle := rl.GenImageGradientRadial(16, 16, 0.3, rl.White, rl.Black)
+	textureCircle = rl.LoadTextureFromImage(imageCircle)
+	defer rl.UnloadImage(imageCircle)
+	defer rl.UnloadTexture(textureCircle)
+
+	playerRockets = newPlayerRockets()
+
+	emitters = &Emitters{
+		Systems: []*ParticleSystem{},
+	}
+
+	for !rl.WindowShouldClose() {
+		if rl.IsKeyPressed(rl.KeyEscape) {
+			rl.CloseWindow()
+			break
+		}
+
+		rl.BeginTextureMode(renderTexture)
+		renderGradientBackground()
+
+		invadersManager.DrawShadow()
+
+		invadersManager.Draw()
+		invadersManager.Update()
+
+		playerRockets.update()
+		playerRockets.draw()
+
+		emitters.Update()
+		// emitters.Draw()
+
+		player.update()
+		player.updateEffects()
+		player.draw()
+
+		rl.DrawTextEx(smallFont, fmt.Sprintf("Frames: %d", rl.GetFPS()), rl.NewVector2(WindowWidth-130, 10), BigFontSize*0.2, 0, rl.RayWhite)
+		rl.DrawTextEx(smallFont, fmt.Sprintf("Score: %d", player.Score), rl.NewVector2(10, 10), BigFontSize*0.2, 0, rl.RayWhite)
+
+		rl.EndTextureMode()
+
+		drawRenderTexture(renderTexture)
+	}
+}
+
+type Emitters struct {
+	Systems []*ParticleSystem
+}
+
+func (e *Emitters) Add(emitter *ParticleSystem) {
+	e.Systems = append(e.Systems, emitter)
+}
+
+func (e *Emitters) Remove(emitter *ParticleSystem) {
+	for i, s := range e.Systems {
+		if s == emitter {
+			e.Systems = append(e.Systems[:i], e.Systems[i+1:]...)
+		}
+	}
+}
+
+func (e *Emitters) Update() {
+	for _, s := range e.Systems {
+		s.Update()
+	}
+}
+
+func (e *Emitters) Draw() {
+	for _, s := range e.Systems {
+		s.Draw()
+	}
+}
+
+func (e *Emitters) Burst() {
+	for _, s := range e.Systems {
+		s.Burst()
 	}
 }
 
@@ -504,11 +661,13 @@ func initGameTextures() *GameTextures {
 	player := rl.LoadTexture(ResourseFolder + "player.png")
 	dude := rl.LoadTexture(ResourseFolder + "dude.png")
 	alien := rl.LoadTexture(ResourseFolder + "alien.png")
+	rocket := rl.LoadTexture(ResourseFolder + "rocket.png")
 
 	gameTexture := new(GameTextures)
 	gameTexture.Player = &player
 	gameTexture.Dude = &dude
 	gameTexture.Alien = &alien
+	gameTexture.Rocket = &rocket
 
 	return gameTexture
 }
@@ -517,6 +676,7 @@ func unloadGameTextures(gameTextures *GameTextures) {
 	rl.UnloadTexture(*gameTextures.Player)
 	rl.UnloadTexture(*gameTextures.Dude)
 	rl.UnloadTexture(*gameTextures.Alien)
+	rl.UnloadTexture(*gameTextures.Rocket)
 }
 
 func renderGradientBackground() {
@@ -628,18 +788,17 @@ func renderTexture(
 	)
 }
 
-func initFlameParticleSystem() *ParticleSystem {
+const FlameSize = 0.5
+
+func initFlameParticleSystem(origin rl.Vector2) *ParticleSystem {
 	ps := &ParticleSystem{}
 
 	configFlame1 := EmitterConfig{
-		StartSize:    rl.NewVector2(2, 2),
-		EndSize:      rl.NewVector2(1, 1),
+		StartSize:    rl.NewVector2(2*FlameSize, 2*FlameSize),
+		EndSize:      rl.NewVector2(1*FlameSize, 1*FlameSize),
 		Capacity:     100,
 		EmmisionRate: 500,
-		Origin: rl.Vector2{
-			X: 0,
-			Y: 0,
-		},
+		Origin:       origin,
 		OriginAcceleration: [2]float32{
 			50,
 			100,
@@ -664,39 +823,197 @@ func initFlameParticleSystem() *ParticleSystem {
 		StartColor: rl.NewColor(255, 20, 0, 255),
 		EndColor:   rl.NewColor(255, 20, 0, 0),
 		Age: [2]float32{
-			1.0,
-			2.0,
+			0.0,
+			1.2,
 		},
-		Texture:   textureCircle,
+		Texture:   &textureCircle,
 		BlendMode: rl.BlendAdditive,
 	}
 
 	emitterFlame1 := NewEmitter(configFlame1)
 
 	configFlame2 := configFlame1
-	configFlame2.StartSize = rl.NewVector2(1, 1)
-	configFlame2.EndSize = rl.NewVector2(0, 0)
+	configFlame2.StartSize = rl.NewVector2(2*FlameSize, 2*FlameSize)
+	configFlame2.EndSize = rl.NewVector2(0*FlameSize, 0*FlameSize)
 	configFlame2.Capacity = 20
 	configFlame2.EmmisionRate = 20
 	configFlame2.StartColor = rl.NewColor(255, 255, 255, 10)
 	configFlame2.EndColor = rl.NewColor(255, 255, 255, 0)
 	configFlame2.Age = [2]float32{
-		0.5,
+		0.0,
 		1.0,
 	}
 
 	emitterFlame2 := NewEmitter(configFlame2)
 
 	configSmokeEmitter := configFlame2
-	configSmokeEmitter.StartSize = rl.NewVector2(2, 2)
-	configSmokeEmitter.EndSize = rl.NewVector2(1, 1)
-	configSmokeEmitter.Capacity = 500
+	configSmokeEmitter.StartSize = rl.NewVector2(2*FlameSize, 2*FlameSize)
+	configSmokeEmitter.EndSize = rl.NewVector2(1*FlameSize, 1*FlameSize)
+	configSmokeEmitter.Capacity = 100
 	configSmokeEmitter.EmmisionRate = 100
 	configSmokeEmitter.StartColor = rl.NewColor(125, 125, 125, 30)
 	configSmokeEmitter.EndColor = rl.NewColor(125, 125, 125, 10)
 	configSmokeEmitter.Age = [2]float32{
-		3.0,
-		5.0,
+		0.0,
+		1.5,
+	}
+
+	smokeEmitter := NewEmitter(configSmokeEmitter)
+
+	ps.Add(emitterFlame1)
+	ps.Add(smokeEmitter)
+	ps.Add(emitterFlame2)
+
+	return ps
+}
+
+func initEngineParticleSystem(origin rl.Vector2) *ParticleSystem {
+	ps := &ParticleSystem{}
+
+	configFlame1 := EmitterConfig{
+		StartSize:    rl.NewVector2(2*FlameSize, 2*FlameSize),
+		EndSize:      rl.NewVector2(1*FlameSize, 1*FlameSize),
+		Capacity:     100,
+		EmmisionRate: 500,
+		Origin:       origin,
+		OriginAcceleration: [2]float32{
+			50,
+			100,
+		},
+		Offset: [2]float32{
+			0,
+			10,
+		},
+		Direction: rl.NewVector2(0, -1),
+		DirectionAngle: [2]float32{
+			90,
+			90,
+		},
+		Velocity: [2]float32{
+			30,
+			150,
+		},
+		VelocityAngle: [2]float32{
+			90,
+			90,
+		},
+		StartColor: rl.NewColor(255, 20, 0, 255),
+		EndColor:   rl.NewColor(255, 20, 0, 0),
+		Age: [2]float32{
+			0.0,
+			0.2,
+		},
+		Texture:   &textureCircle,
+		BlendMode: rl.BlendAdditive,
+	}
+
+	emitterFlame1 := NewEmitter(configFlame1)
+
+	configFlame2 := configFlame1
+	configFlame2.StartSize = rl.NewVector2(2*FlameSize, 2*FlameSize)
+	configFlame2.EndSize = rl.NewVector2(0*FlameSize, 0*FlameSize)
+	configFlame2.Capacity = 20
+	configFlame2.EmmisionRate = 20
+	configFlame2.StartColor = rl.NewColor(255, 255, 255, 10)
+	configFlame2.EndColor = rl.NewColor(255, 255, 255, 0)
+	configFlame2.Age = [2]float32{
+		0.0,
+		0.3,
+	}
+
+	emitterFlame2 := NewEmitter(configFlame2)
+
+	configSmokeEmitter := configFlame2
+	configSmokeEmitter.StartSize = rl.NewVector2(2*FlameSize, 2*FlameSize)
+	configSmokeEmitter.EndSize = rl.NewVector2(1*FlameSize, 1*FlameSize)
+	configSmokeEmitter.Capacity = 100
+	configSmokeEmitter.EmmisionRate = 100
+	configSmokeEmitter.StartColor = rl.NewColor(125, 125, 125, 30)
+	configSmokeEmitter.EndColor = rl.NewColor(125, 125, 125, 10)
+	configSmokeEmitter.Age = [2]float32{
+		0.0,
+		1.0,
+	}
+
+	smokeEmitter := NewEmitter(configSmokeEmitter)
+
+	ps.Add(emitterFlame1)
+	ps.Add(smokeEmitter)
+	ps.Add(emitterFlame2)
+
+	return ps
+}
+
+func initExplosionParticleSystem(origin rl.Vector2) *ParticleSystem {
+	ps := &ParticleSystem{}
+
+	configFlame1 := EmitterConfig{
+		StartSize:    rl.NewVector2(2*FlameSize, 2*FlameSize),
+		EndSize:      rl.NewVector2(1*FlameSize, 1*FlameSize),
+		Capacity:     100,
+		EmmisionRate: 500,
+		Origin:       origin,
+		OriginAcceleration: [2]float32{
+			50,
+			100,
+		},
+		Offset: [2]float32{
+			0,
+			10,
+		},
+		Direction: rl.NewVector2(0, -1),
+		DirectionAngle: [2]float32{
+			90,
+			90,
+		},
+		Velocity: [2]float32{
+			30,
+			150,
+		},
+		VelocityAngle: [2]float32{
+			90,
+			90,
+		},
+		StartColor: rl.NewColor(255, 20, 0, 255),
+		EndColor:   rl.NewColor(255, 20, 0, 0),
+		Age: [2]float32{
+			0.0,
+			0.2,
+		},
+		Texture:   &textureCircle,
+		BlendMode: rl.BlendAdditive,
+		Burst: [2]int{
+			10,
+			100,
+		},
+	}
+
+	emitterFlame1 := NewEmitter(configFlame1)
+
+	configFlame2 := configFlame1
+	configFlame2.StartSize = rl.NewVector2(2*FlameSize, 2*FlameSize)
+	configFlame2.EndSize = rl.NewVector2(0*FlameSize, 0*FlameSize)
+	configFlame2.Capacity = 20
+	configFlame2.EmmisionRate = 20
+	configFlame2.StartColor = rl.NewColor(255, 255, 255, 10)
+	configFlame2.EndColor = rl.NewColor(255, 255, 255, 0)
+	configFlame2.Age = [2]float32{
+		0.0,
+		0.3,
+	}
+
+	emitterFlame2 := NewEmitter(configFlame2)
+
+	configSmokeEmitter := configFlame2
+	configSmokeEmitter.StartSize = rl.NewVector2(2*FlameSize, 2*FlameSize)
+	configSmokeEmitter.EndSize = rl.NewVector2(1*FlameSize, 1*FlameSize)
+	configSmokeEmitter.Capacity = 100
+	configSmokeEmitter.EmmisionRate = 100
+	configSmokeEmitter.StartColor = rl.NewColor(125, 125, 125, 30)
+	configSmokeEmitter.EndColor = rl.NewColor(125, 125, 125, 10)
+	configSmokeEmitter.Age = [2]float32{
+		0.0,
+		1.0,
 	}
 
 	smokeEmitter := NewEmitter(configSmokeEmitter)

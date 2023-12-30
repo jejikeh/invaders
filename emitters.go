@@ -3,6 +3,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
 
@@ -113,7 +114,7 @@ type EmitterConfig struct {
 	EndColor             rl.Color
 	Age                  FloatRange
 	BlendMode            rl.BlendMode
-	Texture              rl.Texture2D
+	Texture              *rl.Texture2D
 }
 
 func getRandomFloatRange(rng FloatRange) float32 {
@@ -248,7 +249,7 @@ func (e *Emitter) Draw() {
 				((float32(e.Config.Texture.Height))*size.Y)/2,
 			)
 			rl.DrawTexturePro(
-				e.Config.Texture,
+				*e.Config.Texture,
 				rl.Rectangle{
 					X:      0,
 					Y:      0,
@@ -265,7 +266,9 @@ func (e *Emitter) Draw() {
 				linearColorFade(
 					e.Config.StartColor,
 					e.Config.EndColor,
-					p.Age/p.TTL))
+					p.Age/p.TTL,
+				),
+			)
 		}
 	}
 
@@ -341,6 +344,7 @@ func (p *ParticleSystem) Burst() {
 
 func (p *ParticleSystem) Draw() {
 	for _, e := range p.Emitters {
+		fmt.Println("Drawing emitter")
 		e.Draw()
 	}
 }
