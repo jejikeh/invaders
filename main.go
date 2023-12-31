@@ -107,11 +107,10 @@ func main() {
 				// rl.DrawTextEx(*Assets.FontsManager.SmallFont, fmt.Sprintf("Score: %d", player.Score), rl.NewVector2(10, 10), SmallFontSize, 0, rl.RayWhite)
 				// rl.DrawTextEx(*Assets.FontsManager.SmallFont, fmt.Sprintf("Emitters: %d", Emitters.Count()), rl.NewVector2(10, 30), SmallFontSize, 0, rl.RayWhite)
 
-				// Debug.Draw()
+				Debug.Draw()
 			},
 			func() {
 				// NOTE: I thought use that for debug hud
-				Debug.Draw()
 			},
 		)
 		// invadersManager.DrawShadow()

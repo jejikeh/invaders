@@ -19,7 +19,7 @@ func NewRender() *Render {
 	)
 
 	rl.SetWindowMinSize(
-		WindowWidth/WindowMinimalSizeDelimeter,
+		int(WindowWidth/WindowMinimalSizeDelimeter),
 		WindowHeight/WindowMinimalSizeDelimeter,
 	)
 
@@ -37,7 +37,7 @@ func (render *Render) Unload() {
 }
 
 // HACK: Need scale in debug.go to figure out mouse delta...
-// var MouseScale rl.Vector2
+var MouseScale rl.Vector2
 
 func (r *Render) Draw(textureDraw, drawingDraw func()) {
 	calculateDestinationRectangle := func() rl.Rectangle {
@@ -50,9 +50,9 @@ func (r *Render) Draw(textureDraw, drawingDraw func()) {
 		y1 := float32(rl.GetScreenHeight())
 
 		// NOTE: Handle mouse offset and scaling when window resizes
-		// rl.SetMouseOffset(-int(x0), -int(y0))
-		// rl.SetMouseScale(1/scale, 1/scale)
-		// MouseScale = rl.NewVector2(scale, scale)
+		rl.SetMouseOffset(-int(x0), -int(y0))
+		rl.SetMouseScale(1/scale, 1/scale)
+		MouseScale = rl.NewVector2(scale, scale)
 
 		return rl.NewRectangle(x0, y0, x1, y1)
 	}

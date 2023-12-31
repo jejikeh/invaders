@@ -99,8 +99,8 @@ func (e *FloatWindow) Draw() bool {
 	if rl.IsMouseButtonDown(rl.MouseLeftButton) {
 		if rl.CheckCollisionPointRec(rl.GetMousePosition(), rl.NewRectangle(e.Position.X, e.Position.Y, e.Size.X, e.Size.Y)) || e.Drag {
 			e.Drag = true
-			dragOffset = rl.Vector2Divide(rl.GetMouseDelta(), rl.NewVector2(1, 1))
-			// dragOffset = rl.Vector2Subtract(rl.GetMouseDelta(), rl.NewVector2(MouseScale, MouseScale))
+			// dragOffset = rl.Vector2Divide(rl.GetMouseDelta(), rl.NewVector2(1, 1))
+			dragOffset = rl.Vector2Divide(rl.GetMouseDelta(), MouseScale)
 		}
 	}
 
@@ -113,20 +113,20 @@ func (e *FloatWindow) Draw() bool {
 		e.Position.Y += dragOffset.Y
 	}
 
-	if e.Position.X < 8 {
-		e.Position.X = 8
+	if e.Position.X < 16 {
+		e.Position.X = 16
 	}
 
-	if e.Position.Y < 8 {
-		e.Position.Y = 8
+	if e.Position.Y < 16 {
+		e.Position.Y = 16
 	}
 
-	if e.Position.X+e.Size.X > float32(rl.GetScreenWidth())-8 {
-		e.Position.X = float32(rl.GetScreenWidth()) - e.Size.X - 8
+	if e.Position.X+e.Size.X > WindowWidth-16 {
+		e.Position.X = WindowWidth - e.Size.X - 16
 	}
 
-	if e.Position.Y+e.Size.Y > float32(rl.GetScreenHeight())-8 {
-		e.Position.Y = float32(rl.GetScreenHeight()) - e.Size.Y - 8
+	if e.Position.Y+e.Size.Y > WindowHeight-16 {
+		e.Position.Y = WindowHeight - e.Size.Y - 16
 	}
 
 	rl.DrawRectangleRec(rl.NewRectangle(e.Position.X+ShadowOffset, e.Position.Y+ShadowOffset, e.Size.X, e.Size.Y), rl.NewColor(0, 0, 0, 140))
