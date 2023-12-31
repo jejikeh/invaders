@@ -3,12 +3,100 @@
 package main
 
 import (
-	"fmt"
 	"math"
 	"math/rand"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
+
+// NOTE: Maybe just create `EmitterEntity` and handle Update and Draw there?
+// TODO: So, apparantly, this is just EntityManager but with func map
+// Is even relevant to keep separate struct just to update Emmiters?
+type EmitterManager struct {
+	Emitters      []*ParticleSystem
+	StartHangles  map[*ParticleSystem]func(*ParticleSystem)
+	UpdateHangles map[*ParticleSystem]func(*ParticleSystem)
+	DrawHangles   map[*ParticleSystem]func(*ParticleSystem)
+}
+
+func NewEmitterManager() *EmitterManager {
+	return &EmitterManager{
+		Emitters:      []*ParticleSystem{},
+		StartHangles:  map[*ParticleSystem]func(*ParticleSystem){},
+		UpdateHangles: map[*ParticleSystem]func(*ParticleSystem){},
+		DrawHangles:   map[*ParticleSystem]func(*ParticleSystem){},
+	}
+}
+
+func (em *EmitterManager) Add(emitter *ParticleSystem) {
+	em.Emitters = append(em.Emitters, emitter)
+}
+
+func (em *EmitterManager) AddUpdateHandler(emitter *ParticleSystem, handler func(*ParticleSystem)) {
+	em.Emitters = append(em.Emitters, emitter)
+	em.UpdateHangles[emitter] = handler
+}
+
+func (em *EmitterManager) AddDrawHandler(emitter *ParticleSystem, handler func(*ParticleSystem)) {
+	em.Emitters = append(em.Emitters, emitter)
+	em.DrawHangles[emitter] = handler
+}
+
+func (em *EmitterManager) AddHandlers(emitter *ParticleSystem, startHandle, updateHandle, drawHandle func(*ParticleSystem)) {
+	em.Emitters = append(em.Emitters, emitter)
+	em.StartHangles[emitter] = startHandle
+	em.UpdateHangles[emitter] = updateHandle
+	em.DrawHangles[emitter] = drawHandle
+}
+
+func (em *EmitterManager) Remove(emitter *ParticleSystem) {
+	for i, e := range em.Emitters {
+		if e == emitter {
+			em.Emitters = append(em.Emitters[:i], em.Emitters[i+1:]...)
+			break
+		}
+	}
+}
+
+func (em *EmitterManager) Start() {
+	for _, e := range em.Emitters {
+		e.Start()
+	}
+}
+
+func (em *EmitterManager) Update() {
+	for _, e := range em.Emitters {
+		e.Update()
+		if em.UpdateHangles[e] != nil {
+			em.UpdateHangles[e](e)
+		}
+	}
+}
+
+func (em *EmitterManager) FirstDraw() {
+}
+
+func (em *EmitterManager) Draw() {
+	for _, e := range em.Emitters {
+		e.Draw()
+		if em.DrawHangles[e] != nil {
+			em.DrawHangles[e](e)
+		}
+	}
+}
+
+func (em *EmitterManager) Count() int {
+	var count int
+	for _, e := range em.Emitters {
+		count += e.CountEmitters()
+	}
+
+	return count
+}
+
+func (em *EmitterManager) GetLayer() int {
+	return EmitterLayer
+}
 
 type Particle struct {
 	Origin               rl.Vector2
@@ -19,6 +107,7 @@ type Particle struct {
 	Age                  float32
 	TTL                  float32
 	Active               bool
+	Immortal             bool
 }
 
 func (p Particle) IsDead() bool {
@@ -29,6 +118,7 @@ func NewParticle(config EmitterConfig) *Particle {
 	p := new(Particle)
 	p.Age = 0
 	p.Origin = config.Origin
+	p.Immortal = config.Loop
 
 	randomAngle := getRandomFloatRange(config.DirectionAngle)
 	res := rotateVector2(config.Direction, randomAngle)
@@ -115,6 +205,7 @@ type EmitterConfig struct {
 	Age                  FloatRange
 	BlendMode            rl.BlendMode
 	Texture              *rl.Texture2D
+	Loop                 bool
 }
 
 func getRandomFloatRange(rng FloatRange) float32 {
@@ -179,6 +270,12 @@ func NewEmitter(config EmitterConfig) *Emitter {
 
 func (e *Emitter) Start() {
 	e.Active = true
+
+	if e.Count() == 0 {
+		for i := 0; i < e.Config.Capacity; i++ {
+			e.Particles = append(e.Particles, NewParticle(e.Config))
+		}
+	}
 }
 
 func (e *Emitter) Stop() {
@@ -213,17 +310,27 @@ func (e *Emitter) Update() {
 	var p *Particle
 	counter := 0
 
-	if e.Active {
-		e.EmitCount += rl.GetFrameTime() * float32(e.Config.EmmisionRate)
-		emitNow = int(e.EmitCount)
+	if !e.Active {
+		return
 	}
 
+	e.EmitCount += rl.GetFrameTime() * float32(e.Config.EmmisionRate)
+	emitNow = int(e.EmitCount)
+
 	for i := 0; i < e.Config.Capacity; i++ {
+		if i >= len(e.Particles) {
+			break
+		}
+
 		p = e.Particles[i]
+		if p == nil {
+			continue
+		}
+
 		if p.Active {
 			p.Update()
 			counter += 1
-		} else {
+		} else if (e.Active && emitNow > 0) || e.Config.Loop {
 			p = NewParticle(e.Config)
 			e.Particles[i] = p
 
@@ -233,13 +340,26 @@ func (e *Emitter) Update() {
 			e.EmitCount -= 1
 			counter += 1
 		}
+
+		if p.IsDead() && !e.Config.Loop {
+			e.Particles[i] = nil
+			e.Particles = append(e.Particles[:i], e.Particles[i+1:]...)
+		}
 	}
 }
 
 func (e *Emitter) Draw() {
+	// if !e.Active {
+	// 	return
+	// }
+
 	rl.BeginBlendMode(e.Config.BlendMode)
 
 	for _, p := range e.Particles {
+		if p == nil {
+			continue
+		}
+
 		if p.Active {
 			size := linearVectorFade(e.Config.StartSize, e.Config.EndSize, p.Age/p.TTL)
 			textureSizeX := float32(e.Config.Texture.Width) * size.X
@@ -291,11 +411,17 @@ func linearVectorFade(v1, v2 rl.Vector2, fraction float32) rl.Vector2 {
 	}
 }
 
+func (e *Emitter) Count() int {
+	return len(e.Particles)
+}
+
 type ParticleSystem struct {
 	Emitters []*Emitter
 	Count    int
 	Origin   rl.Vector2
 	Active   bool
+	// TODO: Add rotation
+	Rotation float32
 }
 
 func (p *ParticleSystem) Add(emitter *Emitter) {
@@ -344,7 +470,6 @@ func (p *ParticleSystem) Burst() {
 
 func (p *ParticleSystem) Draw() {
 	for _, e := range p.Emitters {
-		fmt.Println("Drawing emitter")
 		e.Draw()
 	}
 }
@@ -353,4 +478,33 @@ func (p *ParticleSystem) Update() {
 	for _, e := range p.Emitters {
 		e.Update()
 	}
+}
+
+func (p *ParticleSystem) CountEmitters() int {
+	var count int
+	for _, e := range p.Emitters {
+		count += e.Count()
+	}
+
+	return count
+}
+
+// Set's the loop for all emitters in the particle system.
+// If there are no more particles in the system, it will start again
+func (p *ParticleSystem) SetLoop(b bool) {
+	for _, e := range p.Emitters {
+		e.Config.Loop = b
+	}
+
+	if p.CountEmitters() == 0 {
+		p.Start()
+	}
+}
+
+func (p *ParticleSystem) GetLoop() bool {
+	for _, e := range p.Emitters {
+		return e.Config.Loop
+	}
+
+	return false
 }
