@@ -89,16 +89,16 @@ func (r *Render) RenderTexture2D(
 ) {
 	textureSizeX := float32(texture.Width) * size.X
 	textureSizeY := float32(texture.Height) * size.Y
-	origin := rl.NewVector2(
-		(float32(texture.Width)/2)*size.X,
-		(float32(texture.Height/2))*size.Y,
-	)
+	// origin := rl.NewVector2(
+	// 	(float32(texture.Width)/2)*size.X,
+	// 	(float32(texture.Height/2))*size.Y,
+	// )
 
 	rl.DrawTexturePro(
 		*texture,
 		rl.NewRectangle(0, 0, float32(texture.Width), -float32(texture.Height)),
 		rl.NewRectangle(positon.X, positon.Y, textureSizeX, textureSizeY),
-		origin,
+		rl.NewVector2(0, 0),
 		rotation,
 		tint,
 	)

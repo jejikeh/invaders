@@ -13,6 +13,7 @@ type EntityInterface interface {
 	Draw()
 	Update()
 	GetLayer() int
+	GetRectangle() rl.Rectangle
 }
 
 type Entity struct {
@@ -102,6 +103,21 @@ func (e *Entity) Update() {
 	e.Position.Y += e.Velocity.Y * rl.GetFrameTime()
 }
 
+func (e *Entity) GetRectangle() rl.Rectangle {
+
+	entityHeight := float32(math.Abs(float64(e.ShadowHeight))) + 2.5
+	size := rl.Vector2AddValue(e.Size, entityHeight/100)
+
+	textureSizeX := float32(e.Texture.Width) * size.X
+	textureSizeY := float32(e.Texture.Height) * size.Y
+
+	sizeRectangle := rl.NewVector2(textureSizeX, textureSizeY)
+
+	position := rl.Vector2Subtract(e.Position, rl.NewVector2(0, entityHeight))
+
+	return rl.NewRectangle(position.X, position.Y, sizeRectangle.X, sizeRectangle.Y)
+}
+
 func (e *Entity) GetLayer() int {
 	return e.Layer
 }
@@ -184,20 +200,6 @@ func (p *Player) Start() {
 
 func (p *Player) Update() {
 	p.Entity.Update()
-	// if rl.IsKeyPressed(rl.KeyP) {
-	// 	p.addEffect(&RespanwEffect{
-	// 		Entity:   p.Entity,
-	// 		Lifetime: RespawnEffectDefaultLifetime,
-	// 	})
-	// }
-
-	// if rl.IsKeyPressed(rl.KeySpace) {
-	// 	playerRockets.addRocket(p)
-	// }
-
-	// engineEmitterPosition := rl.NewVector2(p.Position.X-2, p.Position.Y-EntitiesBaseSize)
-	// p.EngineEmitters.SetOrigin(engineEmitterPosition)
-	// p.EngineEmitters.Update()
 
 	p.updateMovement()
 
@@ -216,10 +218,6 @@ func (p *Player) Update() {
 	if p.Position.X < 0 {
 		p.Position.X = WindowWidth
 	}
-}
-
-func (p *Player) Draw() {
-	p.Entity.Draw()
 }
 
 func (p *Player) GetLayer() int {

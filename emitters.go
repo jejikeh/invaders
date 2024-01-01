@@ -17,6 +17,7 @@ type EmitterManager struct {
 	StartHangles  map[*ParticleSystem]func(*ParticleSystem)
 	UpdateHangles map[*ParticleSystem]func(*ParticleSystem)
 	DrawHangles   map[*ParticleSystem]func(*ParticleSystem)
+	Updates       bool
 }
 
 func NewEmitterManager() *EmitterManager {
@@ -25,6 +26,7 @@ func NewEmitterManager() *EmitterManager {
 		StartHangles:  map[*ParticleSystem]func(*ParticleSystem){},
 		UpdateHangles: map[*ParticleSystem]func(*ParticleSystem){},
 		DrawHangles:   map[*ParticleSystem]func(*ParticleSystem){},
+		Updates:       true,
 	}
 }
 
@@ -61,10 +63,17 @@ func (em *EmitterManager) Remove(emitter *ParticleSystem) {
 func (em *EmitterManager) Start() {
 	for _, e := range em.Emitters {
 		e.Start()
+		if em.StartHangles[e] != nil {
+			em.StartHangles[e](e)
+		}
 	}
 }
 
 func (em *EmitterManager) Update() {
+	if !em.Updates {
+		return
+	}
+
 	for _, e := range em.Emitters {
 		e.Update()
 		if em.UpdateHangles[e] != nil {
@@ -213,7 +222,11 @@ func getRandomFloatRange(rng FloatRange) float32 {
 }
 
 func getRandomIntRange(rng IntRange) int {
-	return rand.Intn(rng[1]-rng[0]) + rng[0]
+	v := rng[1] - rng[0]
+	if v <= 0 {
+		v = 1
+	}
+	return rand.Intn(v) + rng[0]
 }
 
 // func getRandomVector2Range(rng Vectror2Range) rl.Vector2 {
@@ -261,9 +274,9 @@ func NewEmitter(config EmitterConfig) *Emitter {
 
 	e.Config.Direction = rl.Vector2Normalize(e.Config.Direction)
 
-	for i := 0; i < e.Config.Capacity; i++ {
-		e.Particles = append(e.Particles, NewParticle(e.Config))
-	}
+	// for i := 0; i < e.Config.Capacity; i++ {
+	// 	e.Particles = append(e.Particles, NewParticle(e.Config))
+	// }
 
 	return e
 }
@@ -349,9 +362,9 @@ func (e *Emitter) Update() {
 }
 
 func (e *Emitter) Draw() {
-	// if !e.Active {
-	// 	return
-	// }
+	if !e.Active {
+		return
+	}
 
 	rl.BeginBlendMode(e.Config.BlendMode)
 
@@ -364,10 +377,7 @@ func (e *Emitter) Draw() {
 			size := linearVectorFade(e.Config.StartSize, e.Config.EndSize, p.Age/p.TTL)
 			textureSizeX := float32(e.Config.Texture.Width) * size.X
 			textureSizeY := float32(e.Config.Texture.Height) * size.Y
-			origin := rl.NewVector2(
-				((float32(e.Config.Texture.Width))*size.X)/2,
-				((float32(e.Config.Texture.Height))*size.Y)/2,
-			)
+
 			rl.DrawTexturePro(
 				*e.Config.Texture,
 				rl.Rectangle{
@@ -381,7 +391,7 @@ func (e *Emitter) Draw() {
 					Width:  textureSizeX,
 					Height: textureSizeY,
 				},
-				origin,
+				rl.NewVector2(0, 0),
 				0,
 				linearColorFade(
 					e.Config.StartColor,
@@ -422,6 +432,7 @@ type ParticleSystem struct {
 	Active   bool
 	// TODO: Add rotation
 	Rotation float32
+	Visible  bool
 }
 
 func (p *ParticleSystem) Add(emitter *Emitter) {
@@ -450,6 +461,15 @@ func (p *ParticleSystem) SetOrigin(origin rl.Vector2) {
 
 func (p *ParticleSystem) Start() {
 	p.Active = true
+	p.Visible = true
+	// for _, e := range p.Emitters {
+	// 	e.Start()
+	// }
+}
+
+func (p *ParticleSystem) ReStart() {
+	p.Active = true
+	p.Visible = true
 	for _, e := range p.Emitters {
 		e.Start()
 	}
@@ -457,9 +477,10 @@ func (p *ParticleSystem) Start() {
 
 func (p *ParticleSystem) Stop() {
 	p.Active = false
-	for _, e := range p.Emitters {
-		e.Stop()
-	}
+	p.Visible = false
+	// for _, e := range p.Emitters {
+	// 	e.Stop()
+	// }
 }
 
 func (p *ParticleSystem) Burst() {
@@ -469,12 +490,20 @@ func (p *ParticleSystem) Burst() {
 }
 
 func (p *ParticleSystem) Draw() {
+	if !p.Visible {
+		return
+	}
+
 	for _, e := range p.Emitters {
 		e.Draw()
 	}
 }
 
 func (p *ParticleSystem) Update() {
+	if !p.Active {
+		return
+	}
+
 	for _, e := range p.Emitters {
 		e.Update()
 	}
@@ -497,7 +526,7 @@ func (p *ParticleSystem) SetLoop(b bool) {
 	}
 
 	if p.CountEmitters() == 0 {
-		p.Start()
+		p.ReStart()
 	}
 }
 
