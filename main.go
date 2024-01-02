@@ -5,9 +5,10 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-const MajorVersion = 0
-const MinorVersion = 1
-const PatchVersion = 0
+var (
+	MajorVersion string
+	MinorVersion string
+)
 
 const Aspect = 224.0 / 288.0
 const VerticalPixels = 720
@@ -33,6 +34,9 @@ var Emitters *EmitterManager
 var Debug *Hud
 
 var Mode GameMode = Game
+
+// @Cleanup
+var music rl.Music
 
 func main() {
 	// @Refactor: Create global hud manager or something like that
@@ -73,6 +77,17 @@ func main() {
 	Entities.Start()
 	Emitters.Start()
 
+	rl.InitAudioDevice()
+	defer rl.CloseAudioDevice()
+
+	music = rl.LoadMusicStream("resources/music.mp3")
+	defer rl.UnloadMusicStream(music)
+
+	music.Looping = true
+	rl.SetMusicVolume(music, 0.4)
+
+	rl.PlayMusicStream(music)
+
 	// @Hack: for some freaking reason IsKeyPressed invokes two times...
 	wasPressedPrevFrame := false
 
@@ -88,6 +103,8 @@ func main() {
 				wasPressedPrevFrame = false
 			}
 		}
+
+		rl.UpdateMusicStream(music)
 
 		if Mode == Game {
 			SimulateInvaders()

@@ -13,7 +13,9 @@ type MenuState struct {
 	MusicVolume float32
 }
 
-var menuState MenuState = MenuState{}
+var menuState MenuState = MenuState{
+	MusicVolume: 1,
+}
 
 var choicesCount int
 var currentMenuChoice int
@@ -39,11 +41,11 @@ func SimulateMenu() {
 		}
 	}
 
-	if rl.IsKeyPressed(rl.KeyUp) {
+	if rl.IsKeyPressed(rl.KeyUp) || rl.IsKeyPressed(rl.KeyW) {
 		handleChoiceInput(-1)
 	}
 
-	if rl.IsKeyPressed(rl.KeyDown) {
+	if rl.IsKeyPressed(rl.KeyDown) || rl.IsKeyPressed(rl.KeyS) {
 		handleChoiceInput(1)
 	}
 }
@@ -61,7 +63,7 @@ func DrawMenu() {
 	//
 	// Draw version
 	//
-	rl.DrawTextEx(*Assets.FontsManager.SmallFont, fmt.Sprintf("v%d.%d.%d", MajorVersion, MinorVersion, PatchVersion), rl.NewVector2(10, 10), SmallFontSize*0.8, 0, rl.RayWhite)
+	rl.DrawTextEx(*Assets.FontsManager.SmallFont, fmt.Sprintf("v%s.%s", MajorVersion, MinorVersion), rl.NewVector2(10, 10), SmallFontSize*0.8, 0, rl.RayWhite)
 
 	var yy float32 = WindowHeight * 0.2
 
@@ -96,6 +98,7 @@ func DrawMenu() {
 		} else {
 			Mode = Game
 			restartConfirmation = false
+			quitConfirmation = false
 		}
 	}
 	yy += 48
@@ -104,7 +107,20 @@ func DrawMenu() {
 	// Draw Music Option
 	//
 	musicString := "Music: On"
-	drawItem(bigFont, musicString, yy, SmallFontSize*FontModifier)
+	if menuState.MusicVolume == 0 {
+		musicString = "Music: Off"
+	}
+	if drawItem(bigFont, musicString, yy, SmallFontSize*FontModifier) {
+		if menuState.MusicVolume == 0 {
+			// @Cleanup: Create music manager...
+			rl.SetMusicVolume(music, 0.4)
+			menuState.MusicVolume = 1
+		} else {
+			// @Cleanup: Create music manager...
+			rl.SetMusicVolume(music, 0.0)
+			menuState.MusicVolume = 0
+		}
+	}
 	yy += 48
 
 	//
@@ -121,6 +137,8 @@ func DrawMenu() {
 			restartConfirmation = false
 		} else {
 			ShouldClose = true
+			quitConfirmation = false
+			restartConfirmation = false
 		}
 	}
 }
@@ -137,14 +155,14 @@ func drawItem(font *rl.Font, text string, yy float32, size float32) bool {
 	if choicesCount == currentMenuChoice {
 		t := math.Cos(rl.GetTime() * 2)
 		t *= t
-		t = 0.4 + 0.55*t
+		t = 0.2 + 0.5*t
 
-		itemColor = linearColorFade(rl.Orange, rl.RayWhite, float32(t))
+		itemColor = linearColorFade(rl.White, rl.Orange, float32(t))
 	}
 
 	rl.DrawTextEx(*font, text, rl.NewVector2(WindowWidth/2-center.X/2, yy), size, 0, itemColor)
 
-	return rl.IsKeyPressed(rl.KeyEnter) && choicesCount == currentMenuChoice
+	return (rl.IsKeyPressed(rl.KeyEnter) || rl.IsKeyPressed(rl.KeySpace)) && choicesCount == currentMenuChoice
 }
 
 func renderGradientMenuBackground() {
