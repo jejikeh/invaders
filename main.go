@@ -20,6 +20,12 @@ const WindowMinimalSizeDelimeter = 1
 const ResourseFolder = "resources/"
 const FontFolder = ResourseFolder + "fonts/"
 
+const AudioFolder = ResourseFolder + "audio/"
+const SoundFolder = AudioFolder + "sound/"
+const MusicFolder = AudioFolder + "music/"
+
+const SavesFolder = ResourseFolder + "saves/"
+
 const EntitiesBaseSize = 0.3
 
 const BigFontSize = 192
@@ -31,12 +37,12 @@ var Assets *AssetsManager
 var Renderer *Render
 var Entities *EntityManager
 var Emitters *EmitterManager
+var AudioManager *Mixer
+var Users *UserManager
+
 var Debug *Hud
 
 var Mode GameMode = Game
-
-// @Cleanup
-var music rl.Music
 
 func main() {
 	// @Refactor: Create global hud manager or something like that
@@ -53,6 +59,13 @@ func main() {
 
 	Assets = NewAssetsManager()
 	defer Assets.Unload()
+
+	AudioManager = NewMixer()
+	defer AudioManager.Unload()
+
+	// @Cleanup: New user manager is such a mess.
+	Users = NewUserManager()
+	Users.AddUser()
 
 	player := NewPlayer()
 	Entities = NewEntityManager()
@@ -77,16 +90,9 @@ func main() {
 	Entities.Start()
 	Emitters.Start()
 
-	rl.InitAudioDevice()
-	defer rl.CloseAudioDevice()
-
-	music = rl.LoadMusicStream("resources/music.mp3")
-	defer rl.UnloadMusicStream(music)
-
-	music.Looping = true
-	rl.SetMusicVolume(music, 0.4)
-
-	rl.PlayMusicStream(music)
+	// @Cleanup: Maybe instead of hardcoded music file names we can get it from somewhere else
+	AudioManager.SetMusicLoop("music", true)
+	AudioManager.PlayMusic("music")
 
 	// @Hack: for some freaking reason IsKeyPressed invokes two times...
 	wasPressedPrevFrame := false
@@ -104,7 +110,7 @@ func main() {
 			}
 		}
 
-		rl.UpdateMusicStream(music)
+		AudioManager.UpdateMusic()
 
 		if Mode == Game {
 			SimulateInvaders()
@@ -213,7 +219,7 @@ func renderGradientBackground() {
 		0,
 		WindowWidth,
 		WindowHeight/1.5,
-		rl.NewColor(c(.1), c(.1), c(.2), 255),
+		rl.NewColor(c(.1), c(.1), c(.2), 0),
 		rl.NewColor(c(.1), c(.1), c(.9), 255),
 	)
 }
