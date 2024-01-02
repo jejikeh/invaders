@@ -461,6 +461,26 @@ func NewDebugEmitterWindow(position rl.Vector2, size rl.Vector2, e *ParticleSyst
 					Emitters.Remove(e)
 				},
 			},
+			&Button{
+				Element: Element{
+					Position: rl.NewVector2(8, 72),
+					Size:     rl.NewVector2(184, 30),
+					Title:    "Start",
+				},
+				Handle: func() {
+					e.ReStart()
+				},
+			},
+			&Button{
+				Element: Element{
+					Position: rl.NewVector2(8, 112),
+					Size:     rl.NewVector2(184, 30),
+					Title:    "Visible",
+				},
+				Handle: func() {
+					e.Visible = !e.Visible
+				},
+			},
 		},
 	}
 }

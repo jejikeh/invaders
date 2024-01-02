@@ -5,9 +5,9 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-// TODO: Create a okay easing functions
-// TODO: Delete emmiters?
-// TODO: Optimize emmiters
+const MajorVersion = 0
+const MinorVersion = 1
+const PatchVersion = 0
 
 const Aspect = 224.0 / 288.0
 const VerticalPixels = 720
@@ -24,17 +24,28 @@ const EntitiesBaseSize = 0.3
 const BigFontSize = 192
 const SmallFontSize = 38
 
+var ShouldClose bool
+
 var Assets *AssetsManager
 var Renderer *Render
 var Entities *EntityManager
 var Emitters *EmitterManager
 var Debug *Hud
 
+var Mode GameMode = Game
+
 func main() {
+	// @Refactor: Create global hud manager or something like that
+	// And handle there menu, editor, game hub maybe??
+	// @Cleanup: Create global state manager what will be manages the game state (Menu, Editor, Game)
+	// @Cleanup: Make possible to reset any game state to initial state
 	Debug = NewDebugHud()
 
 	Renderer = NewRender()
 	defer Renderer.Unload()
+
+	gui.LoadStyle("resources/cherry/style_cherry.rgs")
+	rl.SetExitKey(rl.KeyMinus)
 
 	Assets = NewAssetsManager()
 	defer Assets.Unload()
@@ -48,54 +59,79 @@ func main() {
 
 	Emitters.AddHandlers(flameParticle,
 		func(emitter *ParticleSystem) {
-			// emitter.Stop()
+			emitter.ReStart()
 		},
 		func(emitter *ParticleSystem) {
 			rect := player.GetRectangle()
-			emitter.SetOrigin(rl.NewVector2((rect.X + rect.Width/2), rect.Y+rect.Height))
+			emitter.SetOrigin(rl.NewVector2((rect.X+rect.Width/2)-2, rect.Y+rect.Height))
 		},
 		func(emitter *ParticleSystem) {},
 	)
 
+	Emitters.Add(initFlameParticleSystem(rl.NewVector2(player.Position.X, player.Position.Y)))
+
 	Entities.Start()
 	Emitters.Start()
 
-	gui.LoadStyle("resources/cherry/style_cherry.rgs")
+	// @Hack: for some freaking reason IsKeyPressed invokes two times...
+	wasPressedPrevFrame := false
 
-	for !rl.WindowShouldClose() {
-		if rl.IsKeyPressed(rl.KeyEscape) {
-			rl.CloseWindow()
-			break
+	for !rl.WindowShouldClose() && !ShouldClose {
+		// @Hack: for some freaking reason IsKeyPressed invokes two times...
+		{
+			if rl.IsKeyPressed(rl.KeyEscape) && !wasPressedPrevFrame {
+				ToggleMenu()
+				wasPressedPrevFrame = true
+			}
+
+			if rl.IsKeyUp(rl.KeyEscape) {
+				wasPressedPrevFrame = false
+			}
 		}
 
-		if rl.IsKeyPressed(rl.KeySpace) {
-			flameParticle.SetLoop(!flameParticle.GetLoop())
+		if Mode == Game {
+			SimulateInvaders()
+		} else if Mode == Menu {
+			SimulateMenu()
 		}
-
-		Entities.Update()
-		Emitters.Update()
-
-		Debug.Update()
 
 		Renderer.Draw(
 			func() {
-				// TODO: Move as separate entity?
-				renderGradientBackground()
-
-				Entities.FirstDraw()
-
-				Emitters.Draw()
-				Entities.Draw()
-
-				Debug.Draw()
+				if Mode == Game {
+					DrawInvaders()
+				} else if Mode == Menu {
+					DrawMenu()
+				}
 			},
 			func() {
 				// NOTE: I thought use that for debug hud
+				// @Note: This is rendered not in the Render Texture, but in window viewport
+				// @Note: Maybe, in the future all game will be resized to window size?
 			},
 		)
 	}
 }
 
+func SimulateInvaders() {
+	Entities.Update()
+	Emitters.Update()
+
+	// @Note: Maybe change from debug to editor mode?
+	Debug.Update()
+}
+
+func DrawInvaders() {
+	renderGradientBackground()
+
+	Entities.FirstDraw()
+
+	Emitters.Draw()
+	Entities.Draw()
+
+	Debug.Draw()
+}
+
+// @Cleanup: Move this to player scope
 func (p *Player) updateMovement() {
 	input := getInputVector()
 
@@ -125,6 +161,7 @@ func (p *Player) updateMovement() {
 	}
 }
 
+// @Cleanup: Move this to player scope
 func getInputVector() rl.Vector2 {
 	var inputVector rl.Vector2
 	inputVector.X = btof32(rl.IsKeyDown(rl.KeyRight) || rl.IsKeyDown(rl.KeyD)) - btof32(rl.IsKeyDown(rl.KeyLeft) || rl.IsKeyDown(rl.KeyA))
@@ -176,7 +213,7 @@ func initFlameParticleSystem(origin rl.Vector2) *ParticleSystem {
 	ps := &ParticleSystem{}
 
 	configFlame1 := EmitterConfig{
-		Loop:         false,
+		Loop:         true,
 		StartSize:    rl.NewVector2(2*FlameSize, 2*FlameSize),
 		EndSize:      rl.NewVector2(1*FlameSize, 1*FlameSize),
 		Capacity:     100,
