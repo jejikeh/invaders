@@ -17,8 +17,10 @@ var menuState MenuState = MenuState{
 	MusicVolume: 1,
 }
 
-var choicesCount int
+var choicesIterator int
 var currentMenuChoice int
+var choicesCount int
+
 var restartConfirmation bool
 var quitConfirmation bool
 
@@ -28,15 +30,18 @@ func ToggleMenu() {
 	} else {
 		Mode = Game
 	}
+
+	quitConfirmation = false
+	restartConfirmation = false
 }
 
 func SimulateMenu() {
 	handleChoiceInput := func(delta int) {
 		currentMenuChoice += delta
 		if currentMenuChoice < 0 {
-			currentMenuChoice = 3
+			currentMenuChoice = choicesCount
 		}
-		if currentMenuChoice > 3 {
+		if currentMenuChoice > choicesCount {
 			currentMenuChoice = 0
 		}
 	}
@@ -56,7 +61,7 @@ func DrawMenu() {
 	bigFont := Assets.FontsManager.BigFont
 
 	const FontModifier = 1.4
-	choicesCount = -1
+	choicesIterator = -1
 
 	// @Cleanup: Create handy function to draw text on the center of the screen, also for measuring text dimensions
 
@@ -124,6 +129,25 @@ func DrawMenu() {
 	yy += 48
 
 	//
+	// Draw Debug Option
+	//
+	//
+
+	debugString := "Debug: On"
+	if !Debug.Visible {
+		debugString = "Debug: Off"
+	}
+
+	if drawItem(bigFont, debugString, yy, SmallFontSize*FontModifier) {
+		if !Debug.Visible {
+			Debug.Visible = true
+		} else {
+			Debug.Visible = false
+		}
+	}
+
+	yy += 48
+
 	// Draw Exit
 	//
 	quitString := "Quit"
@@ -141,10 +165,14 @@ func DrawMenu() {
 			restartConfirmation = false
 		}
 	}
+
+	// Set choices count equal to the number of items we iterate in this function
+	// drawItem each call will increment the choicesIterator
+	choicesCount = choicesIterator
 }
 
 func drawItem(font *rl.Font, text string, yy float32, size float32) bool {
-	choicesCount++
+	choicesIterator++
 	center := rl.MeasureTextEx(*font, text, size, 0)
 
 	// @Cleanup: Replace text shadow with shader stuff
@@ -152,7 +180,7 @@ func drawItem(font *rl.Font, text string, yy float32, size float32) bool {
 
 	itemColor := rl.NewColor(156, 156, 156, 255)
 
-	if choicesCount == currentMenuChoice {
+	if choicesIterator == currentMenuChoice {
 		t := math.Cos(rl.GetTime() * 2)
 		t *= t
 		t = 0.2 + 0.5*t
@@ -162,18 +190,16 @@ func drawItem(font *rl.Font, text string, yy float32, size float32) bool {
 
 	rl.DrawTextEx(*font, text, rl.NewVector2(WindowWidth/2-center.X/2, yy), size, 0, itemColor)
 
-	return (rl.IsKeyPressed(rl.KeyEnter) || rl.IsKeyPressed(rl.KeySpace)) && choicesCount == currentMenuChoice
+	return (rl.IsKeyPressed(rl.KeyEnter) || rl.IsKeyPressed(rl.KeySpace)) && choicesIterator == currentMenuChoice
 }
 
 func renderGradientMenuBackground() {
-	rl.ClearBackground(rl.Black)
-
 	rl.DrawRectangleGradientV(
 		0,
 		0,
 		WindowWidth,
 		WindowHeight,
-		rl.NewColor(c(.1), c(.1), c(.1), 255),
-		rl.NewColor(c(.1), c(.1), c(.4), 255),
+		rl.NewColor(0, 0, 0, 200),
+		rl.NewColor(0, 0, 0, 100),
 	)
 }

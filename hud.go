@@ -118,13 +118,17 @@ func NewEmitterOverlay() *Overlay {
 		},
 		DrawHangle: func(o *Overlay) bool {
 			for _, e := range Emitters.Emitters {
+				position := e.Origin
+				rl.DrawCircle(int32(position.X), int32(position.Y), 5, rl.Black)
+				rl.DrawCircle(int32(position.X), int32(position.Y), 2, rl.White)
+
 				for _, em := range e.Emitters {
 					for _, p := range em.Particles {
 						rect := rl.NewRectangle(p.Position.X-em.Offset.X, p.Position.Y-em.Offset.Y, float32(em.Config.Texture.Width), float32(em.Config.Texture.Height))
-						gui.GroupBox(rect, "")
 
 						mousePosition := rl.GetMousePosition()
 						if rl.CheckCollisionPointRec(mousePosition, rect) {
+							gui.GroupBox(rect, "")
 							gui.GroupBox(rl.NewRectangle(rect.X+48, rect.Y+10, 100, 240), "Particle")
 							gui.Label(rl.NewRectangle(rect.X+48+4, rect.Y+20, 96, 30), fmt.Sprintf("X: %.2f", rect.X))
 							gui.Label(rl.NewRectangle(rect.X+48+4, rect.Y+60, 96, 30), fmt.Sprintf("Y: %.2f", rect.Y))

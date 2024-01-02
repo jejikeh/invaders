@@ -10,7 +10,7 @@ var (
 	MinorVersion string
 )
 
-const Aspect = 224.0 / 288.0
+const Aspect = 4 / 3
 const VerticalPixels = 720
 
 const WindowWidth = Aspect * VerticalPixels
@@ -116,7 +116,9 @@ func main() {
 			func() {
 				if Mode == Game {
 					DrawInvaders()
+					Debug.Draw()
 				} else if Mode == Menu {
+					DrawInvaders()
 					DrawMenu()
 				}
 			},
@@ -144,8 +146,6 @@ func DrawInvaders() {
 
 	Emitters.Draw()
 	Entities.Draw()
-
-	Debug.Draw()
 }
 
 // @Cleanup: Move this to player scope
