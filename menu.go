@@ -7,18 +7,9 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-var choicesIterator int
-var currentMenuChoice int
-var choicesCount int
-
-var restartConfirmation bool
-var quitConfirmation bool
-
-var optionColorFlashTime float32
-var lastKeyPressTime float64
-
 const OptionColorFlashDuration = 1
 
+// @Incomplete: This will be HandleEscape possible when modes will be incereased
 func ToggleMenu() {
 	if Mode == Game {
 		Mode = Menu
@@ -26,48 +17,152 @@ func ToggleMenu() {
 		Mode = Game
 	}
 
-	quitConfirmation = false
-	restartConfirmation = false
+	CurrentPage.Reset()
 }
 
-func SimulateMenu() {
+type PageElement interface {
+	Draw()
+	Simulate()
+	Reset()
+}
+
+type Page struct {
+	// @Cleanup: do we need this?
+	ChoicesIterator   int
+	CurrentMenuChoice int
+	ChoicesCount      int
+
+	ColorFlashTime   float32
+	LastKeyPressTime float64
+}
+
+func (p *Page) Simulate() {
 	handleChoiceInput := func(delta int) {
-		currentMenuChoice += delta
-		if currentMenuChoice < 0 {
-			currentMenuChoice = choicesCount
+		p.CurrentMenuChoice += delta
+		if p.CurrentMenuChoice < 0 {
+			p.CurrentMenuChoice = p.ChoicesCount
 		}
-		if currentMenuChoice > choicesCount {
-			currentMenuChoice = 0
+		if p.CurrentMenuChoice > p.ChoicesCount {
+			p.CurrentMenuChoice = 0
 		}
 	}
 
 	if rl.IsKeyPressed(rl.KeyUp) || rl.IsKeyPressed(rl.KeyW) {
 		handleChoiceInput(-1)
-		lastKeyPressTime = rl.GetTime()
+		p.LastKeyPressTime = rl.GetTime()
 	}
 
 	if rl.IsKeyPressed(rl.KeyDown) || rl.IsKeyPressed(rl.KeyS) {
 		handleChoiceInput(1)
-		lastKeyPressTime = rl.GetTime()
+		p.LastKeyPressTime = rl.GetTime()
 	}
 
 	// Change color of selected option
+	// @Cleanup: Whe might want to not handle arrow keys for boolean options?
 	if rl.IsKeyPressed(rl.KeyEnter) || rl.IsKeyPressed(rl.KeySpace) || rl.IsKeyPressed(rl.KeyA) || rl.IsKeyPressed(rl.KeyD) || rl.IsKeyPressed(rl.KeyLeft) || rl.IsKeyPressed(rl.KeyRight) {
-		optionColorFlashTime = OptionColorFlashDuration
+		p.ColorFlashTime = OptionColorFlashDuration
 	}
 
-	if optionColorFlashTime > 0 {
-		optionColorFlashTime -= rl.GetFrameTime()
+	if p.ColorFlashTime > 0 {
+		p.ColorFlashTime -= rl.GetFrameTime()
 	}
+
+	// @Incomplete: Add some lamda functions if need
 }
 
-func DrawMenu() {
+func (p *Page) DrawBoolItem(font *rl.Font, text string, yy float32, size float32) bool {
+	p.DrawItem(font, text, yy, size)
+
+	return (rl.IsKeyPressed(rl.KeyEnter) || rl.IsKeyPressed(rl.KeySpace)) && p.ChoicesIterator == p.CurrentMenuChoice
+}
+
+func (p *Page) DrawIntItem(font *rl.Font, text string, yy float32, size float32) int {
+	p.DrawItem(font, text, yy, size)
+
+	dir := 0
+	if p.ChoicesIterator == p.CurrentMenuChoice {
+		if rl.IsKeyPressed(rl.KeyRight) || rl.IsKeyPressed(rl.KeyD) {
+			dir = 1
+		}
+		if rl.IsKeyPressed(rl.KeyLeft) || rl.IsKeyPressed(rl.KeyA) {
+			dir = -1
+		}
+	}
+
+	return dir
+}
+
+func (p *Page) DrawItem(font *rl.Font, text string, yy float32, size float32) {
+	p.ChoicesIterator++
+	center := rl.MeasureTextEx(*font, text, size, 0)
+
+	// @Cleanup: Replace text shadow with shader stuff
+	// rl.DrawTextEx(*font, text, rl.NewVector2((WindowWidth/2-center.X/2)+ShadowOffset, yy+ShadowOffset), size, 0, rl.Black)
+
+	itemColor := rl.NewColor(156, 156, 156, 255)
+
+	// Handle picked item
+	if p.ChoicesIterator == p.CurrentMenuChoice {
+		tBase := 0.2
+		tRange := 0.6
+
+		fromColor := rl.Orange
+		toColor := rl.White
+
+		t := math.Cos((rl.GetTime() - p.LastKeyPressTime) * 3)
+		t *= t
+		t = tBase + tRange*t
+
+		// Color Flash selected option a little bit
+		if p.ColorFlashTime > 0 {
+			s := p.ColorFlashTime / OptionColorFlashDuration
+			s *= s
+
+			s = 1 - s
+
+			fromColor = linearColorFade(rl.Black, fromColor, s)
+			toColor = linearColorFade(rl.Black, toColor, s)
+		}
+
+		itemColor = linearColorFade(fromColor, toColor, float32(t))
+	}
+
+	rl.DrawTextEx(*font, text, rl.NewVector2(WindowWidth/2-center.X/2, yy), size, 0, itemColor)
+}
+
+//
+// MenuPage - for now it's just the pause
+//
+
+type MenuPage struct {
+	Page
+	RestartConfirmation bool
+	QuitConfirmation    bool
+}
+
+func (p *MenuPage) Reset() {
+	p.RestartConfirmation = false
+	p.QuitConfirmation = false
+}
+
+func (p *MenuPage) Draw() {
+	renderGradientMenuBackground := func() {
+		rl.DrawRectangleGradientV(
+			0,
+			0,
+			WindowWidth,
+			WindowHeight,
+			rl.NewColor(0, 0, 0, 240),
+			rl.NewColor(0, 0, 0, 180),
+		)
+	}
+
 	renderGradientMenuBackground()
 
 	font := Assets.FontsManager.BigFont
 
 	const FontModifier = 1.4
-	choicesIterator = -1
+	p.ChoicesIterator = -1
 
 	// @Cleanup: Create handy function to draw text on the center of the screen, also for measuring text dimensions
 
@@ -89,14 +184,11 @@ func DrawMenu() {
 	//
 	// Draw resume
 	//
-
 	font = Assets.FontsManager.SmallFont
 
-	if drawBoolItem(font, "Resume", yy, SmallFontSize*FontModifier) {
+	if p.DrawBoolItem(font, "Resume", yy, SmallFontSize*FontModifier) {
 		Mode = Game
-
-		quitConfirmation = false
-		restartConfirmation = false
+		p.Reset()
 	}
 	yy += Spacing
 
@@ -104,28 +196,109 @@ func DrawMenu() {
 	// Draw restart
 	//
 	restartString := "Restart"
-	if restartConfirmation {
+	if p.RestartConfirmation {
 		restartString = "Are you sure?"
 	}
 
-	if drawBoolItem(font, restartString, yy, SmallFontSize*FontModifier) {
-		if !restartConfirmation {
-			restartConfirmation = true
-			quitConfirmation = false
+	if p.DrawBoolItem(font, restartString, yy, SmallFontSize*FontModifier) {
+		if !p.RestartConfirmation {
+			p.RestartConfirmation = true
+			p.QuitConfirmation = false
 		} else {
 			Mode = Game
-
-			restartConfirmation = false
-			quitConfirmation = false
+			p.Reset()
 		}
 	}
 	yy += Spacing
 
 	//
+	// Draw Options Option
+	//
+	//
+	optionsString := "Options"
+	if p.DrawBoolItem(font, optionsString, yy, SmallFontSize*FontModifier) {
+		CurrentPage = &OptionsPage{}
+	}
+
+	yy += Spacing
+
+	//
+	// Draw Exit
+	//
+	quitString := "Quit"
+	if p.QuitConfirmation {
+		quitString = "Are you sure?"
+	}
+
+	if p.DrawBoolItem(font, quitString, yy, SmallFontSize*FontModifier) {
+		if !p.QuitConfirmation {
+			p.QuitConfirmation = true
+			p.RestartConfirmation = false
+		} else {
+			ShouldClose = true
+
+			// @Cleanup: Make new Update() function in saves.go
+			Users.UpdateSettings()
+			Users.SaveUser()
+			p.Reset()
+		}
+	}
+
+	// Set choices count equal to the number of items we iterate in this function
+	// draw[*]Item each call will increment the choicesIterator
+	p.ChoicesCount = p.ChoicesIterator
+}
+
+type OptionsPage struct {
+	Page
+}
+
+func (p *OptionsPage) Reset() {
+}
+
+func (p *OptionsPage) Draw() {
+	renderGradientMenuBackground := func() {
+		rl.DrawRectangleGradientV(
+			0,
+			0,
+			WindowWidth,
+			WindowHeight,
+			rl.NewColor(0, 0, 0, 240),
+			rl.NewColor(0, 0, 0, 180),
+		)
+	}
+
+	renderGradientMenuBackground()
+
+	font := Assets.FontsManager.BigFont
+
+	const FontModifier = 1.4
+	p.ChoicesIterator = -1
+
+	// @Cleanup: Create handy function to draw text on the center of the screen, also for measuring text dimensions
+
+	//
+	// Draw version
+	//
+	rl.DrawTextEx(*Assets.FontsManager.SmallFont, fmt.Sprintf("v%s.%s", MajorVersion, MinorVersion), rl.NewVector2(10, 10), SmallFontSize*0.8, 0, rl.RayWhite)
+
+	var yy float32 = WindowHeight * 0.2
+	const Spacing = 48
+
+	//
+	// Draw menu title
+	//
+	center := rl.MeasureTextEx(*font, "Options", BigFontSize*0.7, 0)
+	rl.DrawTextEx(*font, "Options", rl.NewVector2(WindowWidth/2-center.X/2, yy), BigFontSize*0.7, 0, rl.RayWhite)
+	yy += 128
+
+	font = Assets.FontsManager.SmallFont
+
+	//
 	// Draw Music Option
 	//
 	musicString := fmt.Sprintf("Music: %.0f%%", Volumes[Music]*100)
-	musicInputDirection := drawIntItem(font, musicString, yy, SmallFontSize*FontModifier)
+	musicInputDirection := p.DrawIntItem(font, musicString, yy, SmallFontSize*FontModifier)
 	switch musicInputDirection {
 	case 1:
 		SetVolume(Music, Volumes[Music]+0.1)
@@ -145,7 +318,7 @@ func DrawMenu() {
 		debugString = "Debug: Off"
 	}
 
-	if drawBoolItem(font, debugString, yy, SmallFontSize*FontModifier) {
+	if p.DrawBoolItem(font, debugString, yy, SmallFontSize*FontModifier) {
 		if !Debug.Visible {
 			Debug.Visible = true
 		} else {
@@ -155,131 +328,17 @@ func DrawMenu() {
 
 	yy += Spacing
 
-	// Draw Exit
+	// Draw Back
 	//
-	quitString := "Quit"
-	if quitConfirmation {
-		quitString = "Are you sure?"
-	}
-
-	if drawBoolItem(font, quitString, yy, SmallFontSize*FontModifier) {
-		if !quitConfirmation {
-			quitConfirmation = true
-			restartConfirmation = false
-		} else {
-			ShouldClose = true
-
-			// @Cleanup: Make new Update() function in saves.go
-			Users.UpdateSettings()
-			Users.SaveUser()
-
-			quitConfirmation = false
-			restartConfirmation = false
-		}
+	backString := "Back"
+	if p.DrawBoolItem(font, backString, yy, SmallFontSize*FontModifier) {
+		menuPage := &MenuPage{}
+		// @Cleanup: Remove this hardcoded stuff?
+		menuPage.CurrentMenuChoice = 2
+		CurrentPage = menuPage
 	}
 
 	// Set choices count equal to the number of items we iterate in this function
 	// draw[*]Item each call will increment the choicesIterator
-	choicesCount = choicesIterator
-}
-
-func drawBoolItem(font *rl.Font, text string, yy float32, size float32) bool {
-	choicesIterator++
-	center := rl.MeasureTextEx(*font, text, size, 0)
-
-	// @Cleanup: Replace text shadow with shader stuff
-	// rl.DrawTextEx(*font, text, rl.NewVector2((WindowWidth/2-center.X/2)+ShadowOffset, yy+ShadowOffset), size, 0, rl.Black)
-
-	itemColor := rl.NewColor(156, 156, 156, 255)
-
-	// Handle picked item
-	if choicesIterator == currentMenuChoice {
-		tBase := 0.2
-		tRange := 0.6
-
-		fromColor := rl.Orange
-		toColor := rl.White
-
-		t := math.Cos((rl.GetTime() - lastKeyPressTime) * 3)
-		t *= t
-		t = tBase + tRange*t
-
-		// Color Flash selected option a little bit
-		if optionColorFlashTime > 0 {
-			s := optionColorFlashTime / OptionColorFlashDuration
-			s *= s
-
-			s = 1 - s
-
-			fromColor = linearColorFade(rl.Black, fromColor, s)
-			toColor = linearColorFade(rl.Black, toColor, s)
-		}
-
-		itemColor = linearColorFade(fromColor, toColor, float32(t))
-	}
-
-	rl.DrawTextEx(*font, text, rl.NewVector2(WindowWidth/2-center.X/2, yy), size, 0, itemColor)
-
-	return (rl.IsKeyPressed(rl.KeyEnter) || rl.IsKeyPressed(rl.KeySpace)) && choicesIterator == currentMenuChoice
-}
-
-func drawIntItem(font *rl.Font, text string, yy float32, size float32) int {
-	choicesIterator++
-	center := rl.MeasureTextEx(*font, text, size, 0)
-
-	// @Cleanup: Replace text shadow with shader stuff
-	// rl.DrawTextEx(*font, text, rl.NewVector2((WindowWidth/2-center.X/2)+ShadowOffset, yy+ShadowOffset), size, 0, rl.Black)
-
-	itemColor := rl.NewColor(156, 156, 156, 255)
-
-	// Handle picked item
-	if choicesIterator == currentMenuChoice {
-		tBase := 0.2
-		tRange := 0.6
-
-		fromColor := rl.Orange
-		toColor := rl.White
-
-		t := math.Cos((rl.GetTime() - lastKeyPressTime) * 3)
-		t *= t
-		t = tBase + tRange*t
-
-		// Color Flash selected option a little bit
-		if optionColorFlashTime > 0 {
-			s := optionColorFlashTime / OptionColorFlashDuration
-			s *= s
-
-			s = 1 - s
-
-			fromColor = linearColorFade(rl.Black, fromColor, s)
-			toColor = linearColorFade(rl.Black, toColor, s)
-		}
-
-		itemColor = linearColorFade(fromColor, toColor, float32(t))
-	}
-
-	rl.DrawTextEx(*font, text, rl.NewVector2(WindowWidth/2-center.X/2, yy), size, 0, itemColor)
-
-	dir := 0
-	if choicesIterator == currentMenuChoice {
-		if rl.IsKeyPressed(rl.KeyRight) || rl.IsKeyPressed(rl.KeyD) {
-			dir = 1
-		}
-		if rl.IsKeyPressed(rl.KeyLeft) || rl.IsKeyPressed(rl.KeyA) {
-			dir = -1
-		}
-	}
-
-	return dir
-}
-
-func renderGradientMenuBackground() {
-	rl.DrawRectangleGradientV(
-		0,
-		0,
-		WindowWidth,
-		WindowHeight,
-		rl.NewColor(0, 0, 0, 240),
-		rl.NewColor(0, 0, 0, 180),
-	)
+	p.ChoicesCount = p.ChoicesIterator
 }

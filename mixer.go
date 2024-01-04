@@ -8,6 +8,7 @@ import (
 )
 
 var Volumes = map[SoundCategory]float32{
+	All:            0.5,
 	Props:          0.5,
 	Ambience:       0.5,
 	PlayerMovement: 0.5,
@@ -34,7 +35,8 @@ func roundFloat(val float32, precision uint) float32 {
 type SoundCategory int
 
 const (
-	Props SoundCategory = iota
+	All SoundCategory = iota
+	Props
 	Ambience
 	PlayerMovement
 	Ui
@@ -59,7 +61,6 @@ type MusicFile struct {
 type Mixer struct {
 	Sounds map[string]SoundFile
 	Musics map[string]MusicFile
-	Volume float32
 }
 
 func NewMixer() *Mixer {
@@ -67,7 +68,6 @@ func NewMixer() *Mixer {
 	m := &Mixer{
 		Sounds: loadSoundFiles(),
 		Musics: loadMusicFiles(),
-		Volume: 1.0,
 	}
 
 	m.UpdateVolume()
@@ -93,11 +93,11 @@ func loadMusicFiles() map[string]MusicFile {
 
 func (m *Mixer) UpdateVolume() {
 	for _, sound := range m.Sounds {
-		rl.SetSoundVolume(sound.Sound, Volumes[sound.Category]*m.Volume)
+		rl.SetSoundVolume(sound.Sound, Volumes[sound.Category]*Volumes[All])
 	}
 
 	for _, music := range m.Musics {
-		rl.SetMusicVolume(music.Music, Volumes[music.Category]*m.Volume)
+		rl.SetMusicVolume(music.Music, Volumes[music.Category]*Volumes[All])
 	}
 }
 
@@ -120,7 +120,7 @@ func (m *Mixer) PlayMusic(music string) {
 }
 
 func (m *Mixer) SetVolume(volume float32) {
-	m.Volume = volume
+	Volumes[All] = volume
 	m.UpdateVolume()
 }
 

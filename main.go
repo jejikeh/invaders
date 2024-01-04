@@ -44,12 +44,19 @@ var Debug *Hud
 
 var Mode GameMode = Game
 
+var CurrentPage PageElement
+
 func main() {
 	// @Refactor: Create global hud manager or something like that
 	// And handle there menu, editor, game hub maybe??
 	// @Cleanup: Create global state manager what will be manages the game state (Menu, Editor, Game)
 	// @Cleanup: Make possible to reset any game state to initial state
+
+	InitVariables(ResourseFolder + "invaders.variables")
+	return
 	Debug = NewDebugHud()
+
+	CurrentPage = &MenuPage{}
 
 	Renderer = NewRender()
 	defer Renderer.Unload()
@@ -115,7 +122,7 @@ func main() {
 		if Mode == Game {
 			SimulateInvaders()
 		} else if Mode == Menu {
-			SimulateMenu()
+			CurrentPage.Simulate()
 		}
 
 		Renderer.Draw(
@@ -124,8 +131,9 @@ func main() {
 					DrawInvaders()
 					Debug.Draw()
 				} else if Mode == Menu {
+					// So the game will be visivle in the menu
 					DrawInvaders()
-					DrawMenu()
+					CurrentPage.Draw()
 				}
 			},
 			func() {
