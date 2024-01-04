@@ -53,7 +53,9 @@ func main() {
 	// @Cleanup: Make possible to reset any game state to initial state
 
 	InitVariables(ResourseFolder + "invaders.variables")
+
 	return
+
 	Debug = NewDebugHud()
 
 	CurrentPage = &MenuPage{}

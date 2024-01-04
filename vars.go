@@ -17,8 +17,22 @@ const (
 	String
 	Bool
 	EndOfFile
-	// Folder
+	Folder
 )
+
+// @Incomplete: Handle folders ans subfolders in 'parser' maybe?
+
+func (t Token) String() string {
+	return [...]string{
+		"Variable",
+		"Int",
+		"Float",
+		"String",
+		"Bool",
+		"EndOfFile",
+		"Folder",
+	}[t]
+}
 
 type Var struct {
 	Type        Token
@@ -30,13 +44,31 @@ type Var struct {
 	BoolValue   bool
 }
 
+func (v *Var) String() string {
+	headerString := fmt.Sprintf("[%s] %s", v.Type.String(), v.Name)
+	bodyString := ""
+
+	switch v.ValueType {
+	case Int:
+		bodyString = fmt.Sprintf("\t[Int]: %d", v.IntValue)
+	case Float:
+		bodyString = fmt.Sprintf("\t[Float]: %f", v.FloatValue)
+	case String:
+		bodyString = fmt.Sprintf("\t[String]: %s", v.StringValue)
+	case Bool:
+		bodyString = fmt.Sprintf("\t[Bool]: %t", v.BoolValue)
+	}
+
+	return fmt.Sprintf("%s\n%s\n-----\n", headerString, bodyString)
+}
+
 // @Cleanup: Refactor all prints to use normal logs
 
 func InitVariables(file string) {
 	lexer := NewLexer(file)
 	vars := lexer.Parse()
 	for _, v := range vars {
-		fmt.Printf("%+v\n", v)
+		fmt.Printf("%s\n", v.String())
 	}
 }
 
@@ -121,6 +153,46 @@ func (l *Lexer) composeNewVar() (Var, error) {
 
 			return *v, nil
 		}
+
+		if ch == '/' {
+			l.eatCharacter()
+			ch, err := l.peekCharater()
+			if err != nil {
+				return Var{}, err
+			}
+
+			if ch == ':' {
+				// @Incomplete: Handle folders :)
+				l.eatCharacter()
+
+				ch, err = l.peekCharater()
+				if err != nil {
+					return Var{}, err
+				}
+
+				// Eat spaces
+				for unicode.IsSpace(ch) {
+					l.eatCharacter()
+					ch, err = l.peekCharater()
+					if err != nil {
+						return *v, err
+					}
+				}
+
+				v, err := l.eatIdentifier()
+				if err != nil {
+					// @Cleanup: Return pointer instead of copy
+					return Var{}, err
+				}
+
+				v.Type = Folder
+				return *v, nil
+			}
+		}
+
+		// @Hack: sinse we are no displaying erros if type is EndOfFile
+		v.Type = Variable
+		return *v, fmt.Errorf("unexpected character '%c' at [%d:%d]", ch, l.CursorLine, l.CursorLinePosition)
 	}
 
 	return *v, nil
@@ -221,7 +293,7 @@ func (l *Lexer) parseIdentifier(v *Var) error {
 			break
 		}
 	} else {
-		return fmt.Errorf("expected part of variable at [%d:%d]", l.CursorLine, l.CursorLinePosition)
+		return fmt.Errorf("expected part of variable at [%d:%d], but got '%c'", l.CursorLine, l.CursorLinePosition, ch)
 	}
 
 	v.Name = stringBuilder.String()
@@ -314,11 +386,17 @@ func (l *Lexer) FillVariable(v *Var) error {
 			}
 
 			v.FloatValue = float32(fl)
+			v.ValueType = Float
+
+			return nil
 		} else {
 			v.IntValue, err = strconv.Atoi(value)
 			if err != nil {
 				return fmt.Errorf("error parsing int '%s' at [%d:%d]", value, l.CursorLine, l.CursorLinePosition)
 			}
+
+			v.ValueType = Int
+			return nil
 		}
 	}
 
@@ -351,6 +429,9 @@ func (l *Lexer) FillVariable(v *Var) error {
 		}
 
 		v.StringValue = stringBuilder.String()
+		v.ValueType = String
+
+		return nil
 	}
 
 	if v.StringValue == "" && v.IntValue == 0 && v.FloatValue == 0 {
