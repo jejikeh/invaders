@@ -54,8 +54,6 @@ func main() {
 
 	InitVariables(ResourseFolder + "invaders.variables")
 
-	return
-
 	Debug = NewDebugHud()
 
 	CurrentPage = &MenuPage{}
