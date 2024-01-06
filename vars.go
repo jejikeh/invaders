@@ -177,7 +177,7 @@ type Lexer struct {
 func NewLexer(filePath string) (*Lexer, error) {
 	fileData, err := os.ReadFile(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading %s vars : %s\n", filePath, err)
+		return nil, fmt.Errorf("error reading %s vars : %s", filePath, err)
 	}
 
 	return &Lexer{
