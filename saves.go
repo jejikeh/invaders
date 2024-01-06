@@ -13,6 +13,7 @@ type GameSettings struct {
 	// @Incomplete: Add all game settings here
 	// Fullscreen bool
 
+	// @Incompltete: Go to mixer and search UserVolume
 	MusicVolume float32
 
 	Debug bool
@@ -125,7 +126,7 @@ func (u *UserManager) UpdateSettings() {
 
 	user := u.CurrentUser
 
-	user.MusicVolume = Volumes[Music]
+	user.MusicVolume = UserVolume.Music
 	user.Debug = Debug.Visible
 	// @Incomplete: Add more stuff to saves
 
@@ -137,7 +138,7 @@ func (u *UserManager) ApplySettings() {
 		u.AddUser()
 	}
 
-	SetVolume(Music, u.CurrentUser.MusicVolume)
+	UserVolume.SetVolume(Music, u.CurrentUser.MusicVolume)
 	Debug.Visible = u.CurrentUser.Debug
 	// @Incomplete: Add more stuff to saves
 }

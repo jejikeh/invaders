@@ -1,4 +1,8 @@
-window_title 0
-
-window_width 800
-window_height 600
+/: Volume
+	All      1.0
+	Props    1.0
+	Ambience 1.0
+    Movement 1.0
+	UI       0.1
+    # @Cleanup: Compare the 100% volume in some other software and set it here
+    Music    0.5

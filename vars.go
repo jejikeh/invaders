@@ -3,10 +3,114 @@ package main
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"unicode"
 )
+
+type DisplayVars struct {
+	VSync bool
+}
+
+// @Incomplete: For now, only one global Inits Variable is handled.
+
+type Inits map[string]any
+
+var Variables Inits = map[string]any{}
+
+// @Incomplete: Add Map type support
+
+func (Inits) Add(v any) {
+	t := reflect.TypeOf(v)
+
+	if t.Kind() != reflect.Ptr {
+		panicString := fmt.Sprintf("struct must be a pointer, got \n\t[type]: '%s'\n\t[name]: '%s'", t.Kind(), t.Name())
+		panic(panicString)
+	}
+
+	tName := t.Elem().Name()
+	Variables[tName] = v
+}
+
+func (Inits) AddNamed(v any, name string) {
+	t := reflect.TypeOf(v)
+
+	if t.Kind() != reflect.Ptr {
+		panicString := fmt.Sprintf("struct must be a pointer, got \n\t[type]: '%s'\n\t[name]: '%s'", t.Kind(), t.Name())
+		panic(panicString)
+	}
+
+	Variables[name] = v
+}
+
+func (Inits) Find(name string) (any, error) {
+	if v, ok := Variables[name]; ok {
+		return v, nil
+	}
+
+	return nil, fmt.Errorf("struct '%s' not found", name)
+}
+
+func InitVariables(file string) error {
+	//
+	// Add structs.
+	//
+
+	Variables.AddNamed(&GameVolume, "Volume")
+
+	//
+	// Parse .variables file and map content to structs.
+	//
+
+	var currentFolder *interface{}
+	var currentFolderName string
+	lexer, err := NewLexer(file)
+	if err != nil {
+		return err
+	}
+
+	vars := lexer.Parse()
+	for _, v := range vars {
+		// fmt.Printf("%s\n", v.String())
+		if v.Type == Folder {
+			findStruct, err := Variables.Find(v.Name)
+			if err != nil {
+				return err
+			}
+
+			currentFolder = &findStruct
+			currentFolderName = v.Name
+		}
+
+		if v.Type == Variable && currentFolder == nil {
+			return fmt.Errorf("the variable '%s' is not in any folder", v.Name)
+		}
+
+		if v.Type == Variable {
+			// @Cleanup: Maybe store Var value in any, but this way gives little bit of a type safety
+			field := reflect.ValueOf(*currentFolder).Elem().FieldByName(v.Name)
+
+			if field.Kind() != v.ValueType {
+				return fmt.Errorf("the variable '%s.%s' is not of type '%s'", currentFolderName, v.Name, field.Kind())
+			}
+
+			// @Cleanup: If stick to separate fields - types, when maybe create a handy function what does a map from Kind to Set Function?
+			switch v.ValueType {
+			case reflect.Int:
+				field.SetInt(int64(v.IntValue))
+			case reflect.Float32:
+				field.SetFloat(float64(v.FloatValue))
+			case reflect.Bool:
+				field.SetBool(v.BoolValue)
+			case reflect.String:
+				field.SetString(v.StringValue)
+			}
+		}
+	}
+
+	return nil
+}
 
 type Token int
 
@@ -36,7 +140,7 @@ func (t Token) String() string {
 
 type Var struct {
 	Type        Token
-	ValueType   Token
+	ValueType   reflect.Kind
 	Name        string
 	StringValue string
 	IntValue    int
@@ -49,27 +153,17 @@ func (v *Var) String() string {
 	bodyString := ""
 
 	switch v.ValueType {
-	case Int:
+	case reflect.Int:
 		bodyString = fmt.Sprintf("\t[Int]: %d", v.IntValue)
-	case Float:
+	case reflect.Float32:
 		bodyString = fmt.Sprintf("\t[Float]: %f", v.FloatValue)
-	case String:
+	case reflect.String:
 		bodyString = fmt.Sprintf("\t[String]: %s", v.StringValue)
-	case Bool:
+	case reflect.Bool:
 		bodyString = fmt.Sprintf("\t[Bool]: %t", v.BoolValue)
 	}
 
 	return fmt.Sprintf("%s\n%s\n-----\n", headerString, bodyString)
-}
-
-// @Cleanup: Refactor all prints to use normal logs
-
-func InitVariables(file string) {
-	lexer := NewLexer(file)
-	vars := lexer.Parse()
-	for _, v := range vars {
-		fmt.Printf("%s\n", v.String())
-	}
 }
 
 type Lexer struct {
@@ -80,16 +174,15 @@ type Lexer struct {
 	Cursor int
 }
 
-func NewLexer(filePath string) *Lexer {
+func NewLexer(filePath string) (*Lexer, error) {
 	fileData, err := os.ReadFile(filePath)
 	if err != nil {
-		fmt.Printf("Error reading %s vars : %s\n", filePath, err)
-		return nil
+		return nil, fmt.Errorf("Error reading %s vars : %s\n", filePath, err)
 	}
 
 	return &Lexer{
 		Input: []rune(string(fileData)),
-	}
+	}, nil
 }
 
 func (l *Lexer) Parse() []Var {
@@ -345,14 +438,14 @@ func (l *Lexer) FillVariable(v *Var) error {
 		}
 
 		v.StringValue = stringBuilder.String()
-		v.ValueType = String
+		v.ValueType = reflect.String
 
 		if v.StringValue == "true" {
 			v.BoolValue = true
-			v.ValueType = Bool
+			v.ValueType = reflect.Bool
 		} else if v.StringValue == "false" {
 			v.BoolValue = false
-			v.ValueType = Bool
+			v.ValueType = reflect.Bool
 		}
 
 		return nil
@@ -386,7 +479,7 @@ func (l *Lexer) FillVariable(v *Var) error {
 			}
 
 			v.FloatValue = float32(fl)
-			v.ValueType = Float
+			v.ValueType = reflect.Float32
 
 			return nil
 		} else {
@@ -395,7 +488,7 @@ func (l *Lexer) FillVariable(v *Var) error {
 				return fmt.Errorf("error parsing int '%s' at [%d:%d]", value, l.CursorLine, l.CursorLinePosition)
 			}
 
-			v.ValueType = Int
+			v.ValueType = reflect.Int
 			return nil
 		}
 	}
@@ -429,7 +522,7 @@ func (l *Lexer) FillVariable(v *Var) error {
 		}
 
 		v.StringValue = stringBuilder.String()
-		v.ValueType = String
+		v.ValueType = reflect.String
 
 		return nil
 	}

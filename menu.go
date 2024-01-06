@@ -73,7 +73,8 @@ func (p *Page) Simulate() {
 func (p *Page) DrawBoolItem(font *rl.Font, text string, yy float32, size float32) bool {
 	p.DrawItem(font, text, yy, size)
 
-	return (rl.IsKeyPressed(rl.KeyEnter) || rl.IsKeyPressed(rl.KeySpace)) && p.ChoicesIterator == p.CurrentMenuChoice
+	// @Cleanup: Decide handle arrows here or not?
+	return (rl.IsKeyPressed(rl.KeyEnter) || rl.IsKeyPressed(rl.KeySpace) || rl.IsKeyPressed(rl.KeyA) || rl.IsKeyPressed(rl.KeyD)) && p.ChoicesIterator == p.CurrentMenuChoice
 }
 
 func (p *Page) DrawIntItem(font *rl.Font, text string, yy float32, size float32) int {
@@ -297,13 +298,14 @@ func (p *OptionsPage) Draw() {
 	//
 	// Draw Music Option
 	//
-	musicString := fmt.Sprintf("Music: %.0f%%", Volumes[Music]*100)
+	musicString := fmt.Sprintf("Music: %.0f%%", UserVolume.Music*100)
 	musicInputDirection := p.DrawIntItem(font, musicString, yy, SmallFontSize*FontModifier)
 	switch musicInputDirection {
 	case 1:
-		SetVolume(Music, Volumes[Music]+0.1)
+		// @Cleanup: Without support for maps, just make SetMusicVolume and etc...
+		UserVolume.SetVolume(Music, UserVolume.Music+0.1)
 	case -1:
-		SetVolume(Music, Volumes[Music]-0.1)
+		UserVolume.SetVolume(Music, UserVolume.Music-0.1)
 	}
 
 	yy += Spacing

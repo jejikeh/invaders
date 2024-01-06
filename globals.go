@@ -20,3 +20,9 @@ const (
 	Menu
 	// DebugMode
 )
+
+type Display struct {
+	Width  int
+	Height int
+	VSync  bool
+}

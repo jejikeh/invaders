@@ -52,7 +52,10 @@ func main() {
 	// @Cleanup: Create global state manager what will be manages the game state (Menu, Editor, Game)
 	// @Cleanup: Make possible to reset any game state to initial state
 
-	InitVariables(ResourseFolder + "invaders.variables")
+	err := InitVariables(ResourseFolder + "invaders.variables")
+	if err != nil {
+		panic(err)
+	}
 
 	Debug = NewDebugHud()
 

@@ -2,34 +2,84 @@ package main
 
 import (
 	"log"
-	"math"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-var Volumes = map[SoundCategory]float32{
-	All:            0.5,
-	Props:          0.5,
-	Ambience:       0.5,
-	PlayerMovement: 0.5,
-	Ui:             0.5,
-	Music:          0.5,
+type Volume struct {
+	All      float32
+	Props    float32
+	Ambience float32
+	Movement float32
+	UI       float32
+	Music    float32
 }
 
-func SetVolume(category SoundCategory, volume float32) {
+var GameVolume = Volume{
+	All:      1.0,
+	Props:    1.0,
+	Ambience: 1.0,
+	Movement: 1.0,
+	UI:       1.0,
+	Music:    1.0,
+}
+
+// UserVolume is a volume, setted by the user, but not saved.
+// @Incomplete: Save it in saves. It is possible to store that in GameSettings
+// And access in here, but them is need to set proper load order, so global game settings
+// will be loaded first. For now it other way.
+var UserVolume = Volume{
+	All:      1.0,
+	Props:    1.0,
+	Ambience: 1.0,
+	Movement: 1.0,
+	UI:       1.0,
+	Music:    1.0,
+}
+
+func (v *Volume) SetVolume(category SoundCategory, volume float32) {
 	if volume < 0.0 {
 		volume = 0.0
 	} else if volume > 1.0 {
 		volume = 1.0
 	}
 
-	Volumes[category] = roundFloat(volume, 1)
+	// @Cleanup: Cant make Volume map, because vars.go does not support maps yet
+	switch category {
+	case All:
+		v.All = volume
+	case Props:
+		v.Props = volume
+	case Ambience:
+		v.Ambience = volume
+	case PlayerMovement:
+		v.Movement = volume
+	case UI:
+		v.UI = volume
+	case Music:
+		v.Music = volume
+	}
+
 	AudioManager.UpdateVolume()
 }
 
-func roundFloat(val float32, precision uint) float32 {
-	ratio := math.Pow(10, float64(precision))
-	return float32(math.Round(float64(val)*ratio) / ratio)
+func (v *Volume) GetVolume(category SoundCategory) float32 {
+	switch category {
+	case All:
+		return v.All
+	case Props:
+		return v.Props
+	case Ambience:
+		return v.Ambience
+	case PlayerMovement:
+		return v.Movement
+	case UI:
+		return v.UI
+	case Music:
+		return v.Music
+	}
+
+	return 0
 }
 
 type SoundCategory int
@@ -39,7 +89,7 @@ const (
 	Props
 	Ambience
 	PlayerMovement
-	Ui
+	UI
 	Music
 )
 
@@ -91,13 +141,20 @@ func loadMusicFiles() map[string]MusicFile {
 	}
 }
 
+func GetGameUserVolume(category SoundCategory) float32 {
+	userCategoryVolume := UserVolume.GetVolume(category)
+	gameCategoryVolume := GameVolume.GetVolume(category)
+
+	return userCategoryVolume * gameCategoryVolume * UserVolume.All * GameVolume.All
+}
+
 func (m *Mixer) UpdateVolume() {
 	for _, sound := range m.Sounds {
-		rl.SetSoundVolume(sound.Sound, Volumes[sound.Category]*Volumes[All])
+		rl.SetSoundVolume(sound.Sound, GetGameUserVolume(sound.Category))
 	}
 
 	for _, music := range m.Musics {
-		rl.SetMusicVolume(music.Music, Volumes[music.Category]*Volumes[All])
+		rl.SetMusicVolume(music.Music, GetGameUserVolume(music.Category))
 	}
 }
 
@@ -120,7 +177,8 @@ func (m *Mixer) PlayMusic(music string) {
 }
 
 func (m *Mixer) SetVolume(volume float32) {
-	Volumes[All] = volume
+	// Do we not clamp value here on purpose?
+	UserVolume.All = volume
 	m.UpdateVolume()
 }
 
