@@ -9,6 +9,7 @@
     Music    0.5
 
 /:Display
+	# @Cleanup: This is not working in runtime... Some stuff seems not responsed to new Width and Height
 	VerticalPixels	720
 	MaxFPS 			0 # Turn off the fps limit
 	VSync			true
