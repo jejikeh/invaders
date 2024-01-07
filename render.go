@@ -11,16 +11,11 @@ type Render struct {
 func NewRender() *Render {
 	render := &Render{}
 
-	var windowFlags uint32
-	if GameDisplay.VSync {
-		windowFlags |= rl.FlagVsyncHint
-	}
-
-	rl.SetConfigFlags(rl.FlagWindowResizable | windowFlags)
+	SetWindowFlags()
 	rl.InitWindow(
 		int32(GameDisplay.Width),
 		int32(GameDisplay.Height),
-		"Invaders",
+		GameDisplay.Title,
 	)
 
 	rl.SetWindowMinSize(
@@ -28,7 +23,9 @@ func NewRender() *Render {
 		GameDisplay.Height/WindowMinimalSizeDelimeter,
 	)
 
-	rl.SetTargetFPS(60)
+	if GameDisplay.MaxFPS > 0 {
+		rl.SetTargetFPS(int32(GameDisplay.MaxFPS))
+	}
 
 	render.RenderTexture = rl.LoadRenderTexture(int32(GameDisplay.Width), int32(GameDisplay.Height))
 	rl.SetTextureFilter(render.RenderTexture.Texture, rl.TextureFilterLinear)
@@ -39,6 +36,15 @@ func NewRender() *Render {
 func (render *Render) Unload() {
 	rl.UnloadRenderTexture(render.RenderTexture)
 	rl.CloseWindow()
+}
+
+func SetWindowFlags() {
+	var windowFlags uint32
+	if GameDisplay.VSync {
+		windowFlags |= rl.FlagVsyncHint
+	}
+
+	rl.SetConfigFlags(rl.FlagWindowResizable | windowFlags)
 }
 
 // HACK: Need scale in debug.go to figure out mouse delta...
@@ -107,4 +113,16 @@ func (r *Render) RenderTexture2D(
 		rotation,
 		tint,
 	)
+}
+
+// @Hack: To call UpdateWindow in main thread. Because vars hot file reload works in goroutine
+var ShouldUpdateWindowInMainThread = false
+
+func (r *Render) Simulate() {
+	if ShouldUpdateWindowInMainThread {
+		rl.SetWindowSize(GameDisplay.Width, GameDisplay.Height)
+		rl.SetWindowTitle(GameDisplay.Title)
+
+		ShouldUpdateWindowInMainThread = false
+	}
 }

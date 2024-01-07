@@ -1,4 +1,4 @@
-/: Volume
+/:Volume
 	All      0.5
 
 	Props    1.0
@@ -8,6 +8,8 @@
     # @Cleanup: Compare the 100% volume in some other software and set it here
     Music    0.5
 
-/: Display
-	VerticalPixels	640
+/:Display
+	VerticalPixels	720
+	MaxFPS 			0 # Turn off the fps limit
 	VSync			true
+	Title 			"Invaders"

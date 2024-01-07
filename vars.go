@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 )
 
@@ -52,7 +53,7 @@ func (Inits) Find(name string) (any, error) {
 	return nil, fmt.Errorf("struct '%s' not found", name)
 }
 
-func InitVariables(file string) error {
+func InitVariables(file string) {
 	//
 	// Add structs.
 	//
@@ -60,9 +61,30 @@ func InitVariables(file string) error {
 	Variables.AddNamed(&GameVolume, "Volume")
 	Variables.AddNamed(&GameDisplay, "Display")
 
+	err := LoadVariables(file)
+	if err != nil {
+		panic(err)
+	}
+}
+
+// Right now the values reload handled by the hardcoded 'Reload' function on the struct.
+// @Cleanup: For now it okay, but if in the future i decide to remove a lot of panics in this code,
+// it should be fixed i think to make it more type safe?.
+
+func LoadVariables(file string) error {
 	//
 	// Parse .variables file and map content to structs.
 	//
+
+	go func() {
+		err := WatchFile(file)
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println("Loading variables...")
+		LoadVariables(file)
+	}()
 
 	var currentFolder *interface{}
 	var currentFolderName string
@@ -78,6 +100,17 @@ func InitVariables(file string) error {
 			findStruct, err := Variables.Find(v.Name)
 			if err != nil {
 				return err
+			}
+
+			// If current holder is initialized, call the ReloadHandle function.
+			// This function will be reload Game Values setted by the struct
+			if currentFolder != nil {
+				t := reflect.ValueOf(*currentFolder).Elem()
+				if t == reflect.ValueOf(nil) {
+					return fmt.Errorf("the folder '%s' is not contain any Reload function", currentFolderName)
+				}
+
+				t.MethodByName("Reload").Call([]reflect.Value{})
 			}
 
 			currentFolder = &findStruct
@@ -108,6 +141,16 @@ func InitVariables(file string) error {
 				field.SetString(v.StringValue)
 			}
 		}
+	}
+
+	// Hangle last folder in file
+	if currentFolder != nil {
+		t := reflect.ValueOf(*currentFolder).Elem()
+		if t == reflect.ValueOf(nil) || !t.MethodByName("Reload").IsValid() {
+			return fmt.Errorf("the folder '%s' is not in contain 'Reload' function", currentFolderName)
+		}
+
+		t.MethodByName("Reload").Call([]reflect.Value{})
 	}
 
 	return nil
@@ -529,7 +572,29 @@ func (l *Lexer) FillVariable(v *Var) error {
 	}
 
 	if v.StringValue == "" && v.IntValue == 0 && v.FloatValue == 0 {
-		return fmt.Errorf("expected '%s' value at [%d:%d]", v.Name, l.CursorLine, l.CursorLinePosition)
+		return fmt.Errorf("expected '%s' value at [%d:%d]. Value '%c':'%s' may be not supported yet", v.Name, l.CursorLine, l.CursorLinePosition, ch, stringBuilder.String())
+	}
+
+	return nil
+}
+
+func WatchFile(file string) error {
+	initialStat, err := os.Stat(file)
+	if err != nil {
+		return err
+	}
+
+	for {
+		stat, err := os.Stat(file)
+		if err != nil {
+			return err
+		}
+
+		if stat.Size() != initialStat.Size() || stat.ModTime() != initialStat.ModTime() {
+			break
+		}
+
+		time.Sleep(1 * time.Second)
 	}
 
 	return nil

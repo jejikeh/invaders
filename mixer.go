@@ -15,15 +15,6 @@ type Volume struct {
 	Music    float32
 }
 
-var GameVolume = Volume{
-	All:      1.0,
-	Props:    1.0,
-	Ambience: 1.0,
-	Movement: 1.0,
-	UI:       1.0,
-	Music:    1.0,
-}
-
 // UserVolume is a volume, setted by the user, but not saved.
 // @Incomplete: Save it in saves. It is possible to store that in GameSettings
 // And access in here, but them is need to set proper load order, so global game settings

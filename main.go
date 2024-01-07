@@ -50,10 +50,7 @@ func main() {
 	// @Cleanup: Create global state manager what will be manages the game state (Menu, Editor, Game)
 	// @Cleanup: Make possible to reset any game state to initial state
 
-	err := InitVariables(ResourseFolder + "invaders.variables")
-	if err != nil {
-		panic(err)
-	}
+	InitVariables(ResourseFolder + "invaders.variables")
 
 	InitGameDisplay()
 
@@ -127,6 +124,9 @@ func main() {
 		} else if Mode == Menu {
 			CurrentPage.Simulate()
 		}
+
+		// @Cleanup: Right now in .Simulate only hack for handle GameDisplay hot reload fields
+		Renderer.Simulate()
 
 		Renderer.Draw(
 			func() {
