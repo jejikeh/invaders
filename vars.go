@@ -58,6 +58,7 @@ func InitVariables(file string) error {
 	//
 
 	Variables.AddNamed(&GameVolume, "Volume")
+	Variables.AddNamed(&GameDisplay, "Display")
 
 	//
 	// Parse .variables file and map content to structs.

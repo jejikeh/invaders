@@ -128,7 +128,7 @@ func (p *Page) DrawItem(font *rl.Font, text string, yy float32, size float32) {
 		itemColor = linearColorFade(fromColor, toColor, float32(t))
 	}
 
-	rl.DrawTextEx(*font, text, rl.NewVector2(WindowWidth/2-center.X/2, yy), size, 0, itemColor)
+	rl.DrawTextEx(*font, text, rl.NewVector2(float32(GameDisplay.Width)/2-center.X/2, yy), size, 0, itemColor)
 }
 
 //
@@ -151,8 +151,8 @@ func (p *MenuPage) Draw() {
 		rl.DrawRectangleGradientV(
 			0,
 			0,
-			WindowWidth,
-			WindowHeight,
+			int32(GameDisplay.Width),
+			int32(GameDisplay.Height),
 			rl.NewColor(0, 0, 0, 240),
 			rl.NewColor(0, 0, 0, 180),
 		)
@@ -172,14 +172,14 @@ func (p *MenuPage) Draw() {
 	//
 	rl.DrawTextEx(*Assets.FontsManager.SmallFont, fmt.Sprintf("v%s.%s", MajorVersion, MinorVersion), rl.NewVector2(10, 10), SmallFontSize*0.8, 0, rl.RayWhite)
 
-	var yy float32 = WindowHeight * 0.2
+	var yy float32 = float32(GameDisplay.Height) * 0.2
 	const Spacing = 48
 
 	//
 	// Draw menu title
 	//
 	center := rl.MeasureTextEx(*font, "Invaders", BigFontSize*0.7, 0)
-	rl.DrawTextEx(*font, "Invaders", rl.NewVector2(WindowWidth/2-center.X/2, yy), BigFontSize*0.7, 0, rl.RayWhite)
+	rl.DrawTextEx(*font, "Invaders", rl.NewVector2(float32(GameDisplay.Width)/2-center.X/2, yy), BigFontSize*0.7, 0, rl.RayWhite)
 	yy += 128
 
 	//
@@ -262,8 +262,8 @@ func (p *OptionsPage) Draw() {
 		rl.DrawRectangleGradientV(
 			0,
 			0,
-			WindowWidth,
-			WindowHeight,
+			int32(GameDisplay.Width),
+			int32(GameDisplay.Height),
 			rl.NewColor(0, 0, 0, 240),
 			rl.NewColor(0, 0, 0, 180),
 		)
@@ -283,14 +283,14 @@ func (p *OptionsPage) Draw() {
 	//
 	rl.DrawTextEx(*Assets.FontsManager.SmallFont, fmt.Sprintf("v%s.%s", MajorVersion, MinorVersion), rl.NewVector2(10, 10), SmallFontSize*0.8, 0, rl.RayWhite)
 
-	var yy float32 = WindowHeight * 0.2
+	var yy float32 = float32(GameDisplay.Height) * 0.2
 	const Spacing = 48
 
 	//
 	// Draw menu title
 	//
 	center := rl.MeasureTextEx(*font, "Options", BigFontSize*0.7, 0)
-	rl.DrawTextEx(*font, "Options", rl.NewVector2(WindowWidth/2-center.X/2, yy), BigFontSize*0.7, 0, rl.RayWhite)
+	rl.DrawTextEx(*font, "Options", rl.NewVector2(float32(GameDisplay.Width)/2-center.X/2, yy), BigFontSize*0.7, 0, rl.RayWhite)
 	yy += 128
 
 	font = Assets.FontsManager.SmallFont

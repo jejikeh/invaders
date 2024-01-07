@@ -77,7 +77,7 @@ func NewEntityOverlay() *Overlay {
 	return &Overlay{
 		Element: Element{
 			Position: rl.NewVector2(0, 0),
-			Size:     rl.NewVector2(WindowWidth, WindowHeight),
+			Size:     rl.NewVector2(float32(GameDisplay.Width), float32(GameDisplay.Height)),
 		},
 		DrawHangle: func(o *Overlay) bool {
 			for _, e := range Entities.Entities {
@@ -114,7 +114,7 @@ func NewEmitterOverlay() *Overlay {
 	return &Overlay{
 		Element: Element{
 			Position: rl.NewVector2(0, 0),
-			Size:     rl.NewVector2(WindowWidth, WindowHeight),
+			Size:     rl.NewVector2(float32(GameDisplay.Width), float32(GameDisplay.Height)),
 		},
 		DrawHangle: func(o *Overlay) bool {
 			for _, e := range Emitters.Emitters {
@@ -222,12 +222,12 @@ func (w *Window) Draw(offset rl.Vector2) bool {
 		w.Position.Y = 16
 	}
 
-	if w.Position.X+w.Size.X > WindowWidth-16 {
-		w.Position.X = WindowWidth - w.Size.X - 16
+	if w.Position.X+w.Size.X > float32(GameDisplay.Width)-16 {
+		w.Position.X = float32(GameDisplay.Width) - w.Size.X - 16
 	}
 
-	if w.Position.Y+w.Size.Y > WindowHeight-16 {
-		w.Position.Y = WindowHeight - w.Size.Y - 16
+	if w.Position.Y+w.Size.Y > float32(GameDisplay.Height)-16 {
+		w.Position.Y = float32(GameDisplay.Height) - w.Size.Y - 16
 	}
 
 	rl.DrawRectangleRec(rl.NewRectangle(w.Position.X+ShadowOffset+offset.X, w.Position.Y+ShadowOffset+offset.Y, w.Size.X, w.Size.Y), rl.NewColor(0, 0, 0, 140))
@@ -278,7 +278,7 @@ func (e *EmittersList) Draw(offset rl.Vector2) bool {
 	emitters := Emitters.Emitters
 	for i, emitter := range emitters {
 		if gui.Button(rl.NewRectangle(e.Position.X+offset.X, e.Position.Y+offset.Y+(float32(i)*32), e.Size.X, 32), fmt.Sprintf("%T", emitter)) {
-			Debug.Add(NewDebugEmitterWindow(rl.NewVector2((WindowWidth/2)-100, (WindowHeight/2)-100), rl.NewVector2(200, 200), emitter))
+			Debug.Add(NewDebugEmitterWindow(rl.NewVector2((float32(GameDisplay.Width)/2)-100, (float32(GameDisplay.Height)/2)-100), rl.NewVector2(200, 200), emitter))
 		}
 	}
 
@@ -346,12 +346,12 @@ func NewDebugHud() *Hud {
 			}
 
 			if h.Visible && rl.IsKeyPressed(rl.KeyEnter) {
-				Debug.Add(NewDebugWindow(rl.NewVector2((WindowWidth/2)-100, (WindowHeight/2)-100), rl.NewVector2(200, 200)))
+				Debug.Add(NewDebugWindow(rl.NewVector2((float32(GameDisplay.Width)/2)-100, (float32(GameDisplay.Height)/2)-100), rl.NewVector2(200, 200)))
 			}
 		},
 		DrawHandle: func(h *Hud) {
 			rl.DrawTextEx(*Assets.FontsManager.SmallFont, "Debug", rl.NewVector2(10, 10), SmallFontSize, 0, rl.RayWhite)
-			rl.DrawTextEx(*Assets.FontsManager.SmallFont, fmt.Sprintf("Frames: %d", rl.GetFPS()), rl.NewVector2(WindowWidth-130, 10), SmallFontSize, 0, rl.RayWhite)
+			rl.DrawTextEx(*Assets.FontsManager.SmallFont, fmt.Sprintf("Frames: %d", rl.GetFPS()), rl.NewVector2(float32(GameDisplay.Width)-130, 10), SmallFontSize, 0, rl.RayWhite)
 		},
 	}
 }

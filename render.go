@@ -11,21 +11,26 @@ type Render struct {
 func NewRender() *Render {
 	render := &Render{}
 
-	rl.SetConfigFlags(rl.FlagWindowResizable | rl.FlagVsyncHint)
+	var windowFlags uint32
+	if GameDisplay.VSync {
+		windowFlags |= rl.FlagVsyncHint
+	}
+
+	rl.SetConfigFlags(rl.FlagWindowResizable | windowFlags)
 	rl.InitWindow(
-		WindowWidth,
-		WindowHeight,
+		int32(GameDisplay.Width),
+		int32(GameDisplay.Height),
 		"Invaders",
 	)
 
 	rl.SetWindowMinSize(
-		int(WindowWidth/WindowMinimalSizeDelimeter),
-		WindowHeight/WindowMinimalSizeDelimeter,
+		int(GameDisplay.Width/WindowMinimalSizeDelimeter),
+		GameDisplay.Height/WindowMinimalSizeDelimeter,
 	)
 
 	rl.SetTargetFPS(60)
 
-	render.RenderTexture = rl.LoadRenderTexture(WindowWidth, WindowHeight)
+	render.RenderTexture = rl.LoadRenderTexture(int32(GameDisplay.Width), int32(GameDisplay.Height))
 	rl.SetTextureFilter(render.RenderTexture.Texture, rl.TextureFilterLinear)
 
 	return render
@@ -41,12 +46,12 @@ var MouseScale rl.Vector2
 
 func (r *Render) Draw(textureDraw, drawingDraw func()) {
 	calculateDestinationRectangle := func() rl.Rectangle {
-		scale := float32(rl.GetScreenHeight()) / WindowHeight
+		scale := float32(rl.GetScreenHeight()) / float32(GameDisplay.Height)
 
-		x0 := (float32(rl.GetScreenWidth()) - float32(WindowWidth)*scale) / 2
+		x0 := (float32(rl.GetScreenWidth()) - float32(GameDisplay.Width)*scale) / 2
 		var y0 float32 = 0.0
 
-		x1 := float32(WindowWidth) * scale
+		x1 := float32(GameDisplay.Width) * scale
 		y1 := float32(rl.GetScreenHeight())
 
 		// NOTE: Handle mouse offset and scaling when window resizes

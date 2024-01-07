@@ -13,8 +13,6 @@ var (
 const Aspect = 4 / 3
 const VerticalPixels = 720
 
-const WindowWidth = Aspect * VerticalPixels
-const WindowHeight = VerticalPixels
 const WindowMinimalSizeDelimeter = 1
 
 const ResourseFolder = "resources/"
@@ -56,6 +54,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	InitGameDisplay()
 
 	Debug = NewDebugHud()
 
@@ -218,9 +218,9 @@ func renderGradientBackground() {
 
 	rl.DrawRectangleGradientV(
 		0,
-		WindowHeight/1.5,
-		WindowWidth,
-		WindowHeight/3,
+		int32(float32(GameDisplay.Height)/1.5),
+		int32(GameDisplay.Width),
+		int32(GameDisplay.Height)/3,
 		rl.NewColor(c(.1), c(.1), c(.9), 255),
 		rl.NewColor(c(.2), c(.5), c(.7), 255),
 	)
@@ -228,8 +228,8 @@ func renderGradientBackground() {
 	rl.DrawRectangleGradientV(
 		0,
 		0,
-		WindowWidth,
-		WindowHeight/1.5,
+		int32(GameDisplay.Width),
+		int32(float64(GameDisplay.Height)/1.5),
 		rl.NewColor(c(.1), c(.1), c(.2), 0),
 		rl.NewColor(c(.1), c(.1), c(.9), 255),
 	)

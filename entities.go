@@ -177,7 +177,7 @@ func NewPlayer() *Player {
 	player := &Player{
 		Entity: newEntity(
 			*Assets.TexturesManager.Player,
-			rl.NewVector2(WindowWidth/2, WindowHeight/1.2),
+			rl.NewVector2(float32(GameDisplay.Width/2), float32(GameDisplay.Height)/1.2),
 			rl.NewVector2(EntitiesBaseSize, EntitiesBaseSize),
 			.0,
 			rl.White,
@@ -203,20 +203,20 @@ func (p *Player) Update() {
 
 	p.updateMovement()
 
-	if p.Position.Y > WindowHeight {
-		p.Position.Y = WindowHeight
+	if p.Position.Y > float32(GameDisplay.Height) {
+		p.Position.Y = float32(GameDisplay.Height)
 	}
 
 	if p.Position.Y < 0 {
 		p.Position.Y = 0
 	}
 
-	if p.Position.X > WindowWidth {
+	if p.Position.X > float32(GameDisplay.Width) {
 		p.Position.X = 0
 	}
 
 	if p.Position.X < 0 {
-		p.Position.X = WindowWidth
+		p.Position.X = float32(GameDisplay.Width)
 	}
 }
 

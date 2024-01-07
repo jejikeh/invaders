@@ -22,7 +22,18 @@ const (
 )
 
 type Display struct {
-	Width  int
-	Height int
-	VSync  bool
+	VerticalPixels int
+	Width          int
+	Height         int
+	VSync          bool
+}
+
+var GameDisplay Display = Display{
+	VerticalPixels: 720,
+	VSync:          true,
+}
+
+func InitGameDisplay() {
+	GameDisplay.Height = GameDisplay.VerticalPixels
+	GameDisplay.Width = GameDisplay.Height * Aspect
 }

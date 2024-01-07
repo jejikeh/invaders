@@ -1,8 +1,13 @@
 /: Volume
-	All      1.0
+	All      0.5
+
 	Props    1.0
 	Ambience 1.0
     Movement 1.0
 	UI       0.1
     # @Cleanup: Compare the 100% volume in some other software and set it here
     Music    0.5
+
+/: Display
+	VerticalPixels	640
+	VSync			true
