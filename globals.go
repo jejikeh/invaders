@@ -1,6 +1,8 @@
 package main
 
-import rl "github.com/gen2brain/raylib-go/raylib"
+import (
+	rl "github.com/gen2brain/raylib-go/raylib"
+)
 
 // @Todo: Maybe it`s a dumb way to have a separate global values for layers.
 // But, maybe it wont be some dumb if we have all globals here? ant it will be
@@ -30,13 +32,18 @@ type Display struct {
 	VSync          bool
 	MaxFPS         int
 	Title          string
+	Fullscreen     bool
+	HiDPI          bool
 }
 
+// Some values will be applied from the start, but some will be changed in the first tick of game loop
 var GameDisplay Display = Display{
 	VerticalPixels: 720,
 	VSync:          true,
 	MaxFPS:         60,
 	Title:          "Invaders",
+	Fullscreen:     false,
+	HiDPI:          false,
 }
 
 func InitGameDisplay() {

@@ -11,7 +11,7 @@ import (
 
 type GameSettings struct {
 	// @Incomplete: Add all game settings here
-	// Fullscreen bool
+	Fullscreen bool
 
 	// @Incompltete: Go to mixer and search UserVolume
 	MusicVolume float32
@@ -128,6 +128,7 @@ func (u *UserManager) UpdateSettings() {
 
 	user.MusicVolume = UserVolume.Music
 	user.Debug = Debug.Visible
+	user.Fullscreen = GameDisplay.Fullscreen
 	// @Incomplete: Add more stuff to saves
 
 	u.CurrentUser = user
@@ -140,5 +141,6 @@ func (u *UserManager) ApplySettings() {
 
 	UserVolume.SetVolume(Music, u.CurrentUser.MusicVolume)
 	Debug.Visible = u.CurrentUser.Debug
+	GameDisplay.Fullscreen = u.CurrentUser.Fullscreen
 	// @Incomplete: Add more stuff to saves
 }

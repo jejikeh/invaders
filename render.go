@@ -6,6 +6,7 @@ import (
 
 type Render struct {
 	RenderTexture rl.RenderTexture2D
+	Flags         uint32
 }
 
 func NewRender() *Render {
@@ -18,10 +19,10 @@ func NewRender() *Render {
 		GameDisplay.Title,
 	)
 
-	rl.SetWindowMinSize(
-		int(GameDisplay.Width/WindowMinimalSizeDelimeter),
-		GameDisplay.Height/WindowMinimalSizeDelimeter,
-	)
+	// rl.SetWindowMinSize(
+	// 	int(GameDisplay.Width/WindowMinimalSizeDelimeter),
+	// 	GameDisplay.Height/WindowMinimalSizeDelimeter,
+	// )
 
 	if GameDisplay.MaxFPS > 0 {
 		rl.SetTargetFPS(int32(GameDisplay.MaxFPS))
@@ -44,7 +45,19 @@ func SetWindowFlags() {
 		windowFlags |= rl.FlagVsyncHint
 	}
 
-	rl.SetConfigFlags(rl.FlagWindowResizable | windowFlags)
+	if GameDisplay.HiDPI {
+		windowFlags |= rl.FlagWindowHighdpi
+	}
+
+	if GameDisplay.Fullscreen {
+		// @Hack: for some reason fullscreen doesn't work on mac with scaling?
+		// windowFlags |= rl.FlagBorderlessWindowedMode
+		// @Incomplete: Fullscreen mode
+		_ = 0
+	}
+
+	windowFlags |= rl.FlagWindowResizable
+	rl.SetConfigFlags(windowFlags)
 }
 
 // HACK: Need scale in debug.go to figure out mouse delta...
@@ -52,13 +65,22 @@ var MouseScale rl.Vector2
 
 func (r *Render) Draw(textureDraw, drawingDraw func()) {
 	calculateDestinationRectangle := func() rl.Rectangle {
-		scale := float32(rl.GetScreenHeight()) / float32(GameDisplay.Height)
+		screenHeight := float32(rl.GetScreenHeight())
+		screenWidth := float32(rl.GetScreenWidth())
 
-		x0 := (float32(rl.GetScreenWidth()) - float32(GameDisplay.Width)*scale) / 2
+		// if rl.IsWindowFullscreen() {
+		// 	monitor := rl.GetCurrentMonitor()
+		// 	screenHeight = float32(rl.GetMonitorHeight(monitor))
+		// 	screenWidth = float32(rl.GetMonitorWidth(monitor))
+		// }
+
+		scale := screenHeight / float32(GameDisplay.Height)
+
+		x0 := (screenWidth - float32(GameDisplay.Width)*scale) / 2
 		var y0 float32 = 0.0
 
 		x1 := float32(GameDisplay.Width) * scale
-		y1 := float32(rl.GetScreenHeight())
+		y1 := screenHeight
 
 		// NOTE: Handle mouse offset and scaling when window resizes
 		rl.SetMouseOffset(-int(x0), -int(y0))
@@ -74,6 +96,7 @@ func (r *Render) Draw(textureDraw, drawingDraw func()) {
 	textureDraw()
 
 	rl.EndTextureMode()
+
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.Black)
 	rl.DrawTexturePro(
@@ -100,10 +123,6 @@ func (r *Render) RenderTexture2D(
 ) {
 	textureSizeX := float32(texture.Width) * size.X
 	textureSizeY := float32(texture.Height) * size.Y
-	// origin := rl.NewVector2(
-	// 	(float32(texture.Width)/2)*size.X,
-	// 	(float32(texture.Height/2))*size.Y,
-	// )
 
 	rl.DrawTexturePro(
 		*texture,
@@ -126,3 +145,5 @@ func (r *Render) Simulate() {
 		ShouldUpdateWindowInMainThread = false
 	}
 }
+
+// @Incomplete: Fullscreen mode

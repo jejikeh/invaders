@@ -310,6 +310,24 @@ func (p *OptionsPage) Draw() {
 
 	yy += Spacing
 
+	fullscreenString := "Fullscreen: On"
+	if !GameDisplay.Fullscreen {
+		fullscreenString = "Fullscreen: Off"
+	}
+
+	if p.DrawBoolItem(font, fullscreenString, yy, SmallFontSize*FontModifier) {
+		if !GameDisplay.Fullscreen {
+			GameDisplay.Fullscreen = true
+		} else {
+			GameDisplay.Fullscreen = false
+		}
+
+		// @Incomplete: Fullscreen mode
+		// Renderer.UpdateFullscreen()
+	}
+
+	yy += Spacing
+
 	//
 	// Draw Debug Option
 	//

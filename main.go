@@ -104,6 +104,8 @@ func main() {
 	// @Hack: for some freaking reason IsKeyPressed invokes two times...
 	wasPressedPrevFrame := false
 
+	firstTick := true
+
 	for !rl.WindowShouldClose() && !ShouldClose {
 		// @Hack: for some freaking reason IsKeyPressed invokes two times...
 		{
@@ -117,16 +119,22 @@ func main() {
 			}
 		}
 
+		// @Hack: Init GameDisplay settings require init window
+		if firstTick {
+			GameDisplay.Reload()
+			firstTick = false
+		}
+
 		AudioManager.UpdateMusic()
+
+		// @Cleanup: Right now in .Simulate only hack for handle GameDisplay hot reload fields
+		Renderer.Simulate()
 
 		if Mode == Game {
 			SimulateInvaders()
 		} else if Mode == Menu {
 			CurrentPage.Simulate()
 		}
-
-		// @Cleanup: Right now in .Simulate only hack for handle GameDisplay hot reload fields
-		Renderer.Simulate()
 
 		Renderer.Draw(
 			func() {
