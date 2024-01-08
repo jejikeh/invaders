@@ -136,14 +136,23 @@ func main() {
 			CurrentPage.Simulate()
 		}
 
+		if rl.IsKeyPressed(rl.KeyO) {
+			Open(OpenBig)
+		}
+
 		Renderer.Draw(
 			func() {
 				if Mode == Game {
 					DrawInvaders()
 					Debug.Draw()
+					DrawConsole()
+
 				} else if Mode == Menu {
+					// @Incomplete: I think is it better to draw some other stuff instead of the game.
+					// Just look to the shadertoy or twitter and make something relaxing and chill.
+
 					// So the game will be visivle in the menu
-					DrawInvaders()
+					// DrawInvaders()
 					CurrentPage.Draw()
 				}
 			},
