@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 type DisplayVars struct {
@@ -45,6 +47,8 @@ func (Inits) AddNamed(v any, name string) {
 	Variables[name] = v
 }
 
+var ColorKind = reflect.TypeOf(rl.Color{}).Kind()
+
 func (Inits) Find(name string) (any, error) {
 	if v, ok := Variables[name]; ok {
 		return v, nil
@@ -60,6 +64,7 @@ func InitVariables(file string) {
 
 	Variables.AddNamed(&GameVolume, "Volume")
 	Variables.AddNamed(&GameDisplay, "Display")
+	Variables.AddNamed(&GameConsole, "Console")
 
 	err := LoadVariables(file)
 	if err != nil {
@@ -139,6 +144,10 @@ func LoadVariables(file string) error {
 				field.SetBool(v.BoolValue)
 			case reflect.String:
 				field.SetString(v.StringValue)
+			case ColorKind:
+				// @Cleanup: If value in Vars struct store in any type, this switch can be replaced
+				// only by this line
+				field.Set(reflect.ValueOf(v.Color))
 			}
 		}
 	}
@@ -160,12 +169,8 @@ type Token int
 
 const (
 	Variable Token = iota
-	Int
-	Float
-	String
-	Bool
-	EndOfFile
 	Folder
+	EndOfFile
 )
 
 // @Incomplete: Handle folders ans subfolders in 'parser' maybe?
@@ -190,6 +195,7 @@ type Var struct {
 	IntValue    int
 	FloatValue  float32
 	BoolValue   bool
+	Color       rl.Color
 }
 
 func (v *Var) String() string {
@@ -569,6 +575,98 @@ func (l *Lexer) FillVariable(v *Var) error {
 		v.ValueType = reflect.String
 
 		return nil
+	}
+
+	// parse color
+	if ch == '(' {
+		l.eatCharacter()
+
+		var r uint8 = 0
+		var g uint8 = 0
+		var b uint8 = 0
+		var a uint8 = 0
+
+		colorIndex := 0
+
+		for {
+			ch, err = l.peekCharater()
+			if err != nil {
+				// Found something
+				if stringBuilder.Len() > 0 {
+					break
+				}
+			}
+
+			if ch == '\n' {
+				return fmt.Errorf("unexpected newline while parsing color value '%s'at [%d:%d]", stringBuilder.String(), l.CursorLine, l.CursorLinePosition)
+			}
+
+			if unicode.IsSpace(ch) {
+				l.eatCharacter()
+				continue
+			}
+
+			if unicode.IsDigit(ch) {
+				stringBuilder.WriteRune(ch)
+				l.eatCharacter()
+				continue
+			}
+
+			if ch == ',' || ch == ')' {
+				l.eatCharacter()
+
+				rp, err := strconv.ParseUint(stringBuilder.String(), 10, 8)
+				if err != nil {
+					return fmt.Errorf("error parsing color value '%s'at [%d:%d]", stringBuilder.String(), l.CursorLine, l.CursorLinePosition)
+				}
+
+				switch colorIndex {
+				case 0:
+					// Red
+					stringBuilder.Reset()
+					r = uint8(rp)
+
+				case 1:
+					// Green
+					stringBuilder.Reset()
+					g = uint8(rp)
+
+				case 2:
+					// Blue
+					stringBuilder.Reset()
+					b = uint8(rp)
+
+				case 3:
+					// Alpha
+					stringBuilder.Reset()
+					a = uint8(rp)
+				}
+
+				colorIndex++
+
+				if ch == ')' {
+					l.eatCharacter()
+					break
+				}
+
+				continue
+			}
+
+			if colorIndex > 3 {
+				return fmt.Errorf("unexpected character '%c' while parsing color value '%s'at [%d:%d]", ch, stringBuilder.String(), l.CursorLine, l.CursorLinePosition)
+			}
+
+			if ch == ')' {
+				l.eatCharacter()
+				break
+			}
+		}
+
+		v.ValueType = ColorKind
+		v.Color = rl.NewColor(r, g, b, a)
+
+		// To indicate what parsed value is color
+		v.StringValue = "Color"
 	}
 
 	if v.StringValue == "" && v.IntValue == 0 && v.FloatValue == 0 {

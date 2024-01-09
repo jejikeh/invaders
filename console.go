@@ -6,10 +6,28 @@ var openT float32 = 0.0
 var openTarget float32 = 0.0
 var openDelta float32 = 100
 
-var inputBackgroundColor rl.Color = rl.NewColor(0, 0, 0, 255)
+type ConsoleConfig struct {
+	InputBackgroundColor rl.Color
+	InputTextColor       rl.Color
+
+	OutputBackgroundColor rl.Color
+	OutputTextColor       rl.Color
+
+	VerticalGradient bool
+}
+
+type Console struct {
+	ConsoleConfig
+}
+
+var GameConsole Console = Console{}
+
+func (Console) Reload() {
+	// @Incomplete
+}
+
 var inputTextColor rl.Color = rl.NewColor(255, 255, 255, 255)
 
-var outputBackgroundColor rl.Color = rl.NewColor(0, 0, 0, 255)
 var outputTextColor rl.Color = rl.NewColor(255, 255, 255, 255)
 
 var consoleWindowX0 float32 = 0.0
@@ -26,7 +44,7 @@ const (
 	OpenBig
 )
 
-func DrawConsole() {
+func (c *Console) DrawConsole() {
 	UpdateOpeness()
 
 	x0 := consoleWindowX0 * BackBufferHeight
@@ -42,7 +60,11 @@ func DrawConsole() {
 
 	// cursorInOutput := false
 
-	rl.DrawRectangleGradientH(int32(x0), int32(inputY0), int32(x1), int32(y1), inputBackgroundColor, outputBackgroundColor)
+	if c.VerticalGradient {
+		rl.DrawRectangleGradientV(int32(x0), int32(inputY0), int32(x1), int32(y1), c.InputBackgroundColor, c.OutputBackgroundColor)
+	} else {
+		rl.DrawRectangleGradientH(int32(x0), int32(inputY0), int32(x1), int32(y1), c.InputBackgroundColor, c.OutputBackgroundColor)
+	}
 }
 
 func Open(state ConsoleState) {

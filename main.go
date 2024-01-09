@@ -145,7 +145,7 @@ func main() {
 				if Mode == Game {
 					DrawInvaders()
 					Debug.Draw()
-					DrawConsole()
+					GameConsole.DrawConsole()
 
 				} else if Mode == Menu {
 					// @Incomplete: I think is it better to draw some other stuff instead of the game.
