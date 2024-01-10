@@ -20,3 +20,4 @@
 	VSync			true
 	Title 			"Invaders"
 	HiDPI 			true
+	MSAA			true
