@@ -19,10 +19,10 @@ func NewRender() *Render {
 		GameDisplay.Title,
 	)
 
-	// rl.SetWindowMinSize(
-	// 	int(GameDisplay.Width/WindowMinimalSizeDelimeter),
-	// 	GameDisplay.Height/WindowMinimalSizeDelimeter,
-	// )
+	rl.SetWindowMinSize(
+		int(GameDisplay.Width/int(GameDisplay.MinimalSize)),
+		GameDisplay.Height/int(GameDisplay.MinimalSize),
+	)
 
 	if GameDisplay.MaxFPS > 0 {
 		rl.SetTargetFPS(int32(GameDisplay.MaxFPS))
@@ -97,11 +97,13 @@ func (r *Render) Draw(textureDraw, drawingDraw func()) {
 	rl.BeginTextureMode(r.RenderTexture)
 	rl.ClearBackground(rl.Black)
 
+	// Render game in the texture
 	textureDraw()
 
 	rl.EndTextureMode()
 
 	rl.BeginDrawing()
+
 	rl.ClearBackground(rl.Black)
 	rl.DrawTexturePro(
 		r.RenderTexture.Texture,
@@ -112,6 +114,7 @@ func (r *Render) Draw(textureDraw, drawingDraw func()) {
 		rl.White,
 	)
 
+	// Render game not in the render texture
 	drawingDraw()
 
 	rl.EndDrawing()

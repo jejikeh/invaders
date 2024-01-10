@@ -10,11 +10,6 @@ var (
 	MinorVersion string
 )
 
-const Aspect = 4 / 3
-const VerticalPixels = 720
-
-const WindowMinimalSizeDelimeter = 1
-
 const ResourseFolder = "resources/"
 const FontFolder = ResourseFolder + "fonts/"
 
@@ -74,6 +69,9 @@ func main() {
 	Users = NewUserManager()
 	Users.AddUser()
 
+	// The all important stuff is already loaded from here
+	GameConsole.Init()
+
 	player := NewPlayer()
 	Entities = NewEntityManager()
 	Entities.Add(player)
@@ -126,7 +124,7 @@ func main() {
 
 			if rl.IsKeyPressed(rl.KeyGrave) {
 				Mode = DevConsole
-				ToggleState()
+				GameConsole.ToggleState()
 			}
 		}
 
@@ -146,6 +144,9 @@ func main() {
 		} else if Mode == Menu {
 			CurrentPage.Simulate()
 		} else if Mode == DevConsole {
+			if !GameConsole.StopTheGame {
+				SimulateInvaders()
+			}
 		}
 
 		Renderer.Draw(
@@ -162,7 +163,8 @@ func main() {
 					CurrentPage.Draw()
 				} else if Mode == DevConsole {
 					DrawInvaders()
-					GameConsole.DrawConsole()
+					Debug.Draw()
+					GameConsole.Draw()
 				}
 			},
 			func() {

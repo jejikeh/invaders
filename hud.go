@@ -350,7 +350,7 @@ func NewDebugHud() *Hud {
 			}
 		},
 		DrawHandle: func(h *Hud) {
-			rl.DrawTextEx(*Assets.FontsManager.SmallFont, "Debug", rl.NewVector2(10, 10), SmallFontSize, 0, rl.RayWhite)
+			// rl.DrawTextEx(*Assets.FontsManager.SmallFont, "Debug", rl.NewVector2(10, 10), SmallFontSize, 0, rl.RayWhite)
 			rl.DrawTextEx(*Assets.FontsManager.SmallFont, fmt.Sprintf("Frames: %d", rl.GetFPS()), rl.NewVector2(float32(GameDisplay.Width)-130, 10), SmallFontSize, 0, rl.RayWhite)
 		},
 	}

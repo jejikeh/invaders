@@ -1,10 +1,8 @@
 package main
 
-import rl "github.com/gen2brain/raylib-go/raylib"
-
-var openT float32 = 0.0
-var openTarget float32 = 0.0
-var openDelta float32 = 500
+import (
+	rl "github.com/gen2brain/raylib-go/raylib"
+)
 
 type ConsoleConfig struct {
 	InputBackgroundColor rl.Color
@@ -14,28 +12,64 @@ type ConsoleConfig struct {
 	OutputTextColor       rl.Color
 
 	VerticalGradient bool
+
+	ScreenPercentX  float32
+	ScreenPercentX1 float32
+
+	ScreenPercentY float32
+
+	ScreenPercentYSmall  float32
+	ScreenPercentYBig    float32
+	ScreenPercentYClosed float32
+
+	Speed float32
+
+	StopTheGame bool
 }
 
 type Console struct {
 	ConsoleConfig
 	CurrentState ConsoleState
+
+	X float32
+	Y float32
+
+	X1 float32
+	Y1 float32
 }
 
-var GameConsole Console = Console{}
+var GameConsole Console = Console{
+	X: 0,
+	ConsoleConfig: ConsoleConfig{
+		Speed: 500,
+	},
+}
+
+func (c *Console) Init() {
+	c.X = float32(GameDisplay.Width) * c.ScreenPercentX
+	c.X1 = (float32(GameDisplay.Width) - c.X) * c.ScreenPercentX1
+
+	// @Incomplete: Handle c.Y in GetTargetHeight?
+	c.Y = float32(GameDisplay.Height) * c.ScreenPercentY
+	c.Y1 = c.GetTargetHeight()
+}
+
+func (g *Console) GetTargetHeight() float32 {
+	switch g.CurrentState {
+	case OpenSmall:
+		return float32(GameDisplay.Height) * g.ScreenPercentYSmall
+	case OpenBig:
+		return float32(GameDisplay.Height) * g.ScreenPercentYBig
+	case Closed:
+		return float32(GameDisplay.Height) * g.ScreenPercentYClosed
+	}
+
+	return 0
+}
 
 func (Console) Reload() {
 	// @Incomplete
 }
-
-var inputTextColor rl.Color = rl.NewColor(255, 255, 255, 255)
-
-var outputTextColor rl.Color = rl.NewColor(255, 255, 255, 255)
-
-var consoleWindowX0 float32 = 0.0
-var consoleWindowX1 float32 = 1.0
-var consoleWindowYb float32 = 0.6
-
-var BackBufferHeight float32 = 1.0
 
 type ConsoleState int
 
@@ -45,67 +79,40 @@ const (
 	OpenBig
 )
 
-func (c *Console) DrawConsole() {
-	UpdateOpeness()
-
-	x0 := consoleWindowX0 * BackBufferHeight
-	x1 := GameDisplay.Width
-
-	y0 := 0.0
-	y1 := openT
-
-	inputY0 := y0
-
-	const Spacing = 48
-	y0 += Spacing
-
-	// cursorInOutput := false
+func (c *Console) Draw() {
+	c.UpdateOpeness()
 
 	if c.VerticalGradient {
-		rl.DrawRectangleGradientV(int32(x0), int32(inputY0), int32(x1), int32(y1), c.InputBackgroundColor, c.OutputBackgroundColor)
+		rl.DrawRectangleGradientV(int32(c.X), int32(c.Y), int32(c.X1), int32(c.Y1), c.InputBackgroundColor, c.OutputBackgroundColor)
 	} else {
-		rl.DrawRectangleGradientH(int32(x0), int32(inputY0), int32(x1), int32(y1), c.InputBackgroundColor, c.OutputBackgroundColor)
+		rl.DrawRectangleGradientH(int32(c.X), int32(c.Y), int32(c.X1), int32(c.Y1), c.InputBackgroundColor, c.OutputBackgroundColor)
 	}
 }
 
-func Open(state ConsoleState) {
+func (c *Console) SetState(state ConsoleState) {
 	GameConsole.CurrentState = state
-	switch state {
-	case OpenSmall:
-		openTarget = float32(GameDisplay.Height) * 0.2
-	case OpenBig:
-		openTarget = float32(GameDisplay.Height) * 0.7
-	case Closed:
-		openTarget = 0
-	}
-
-	// to make it snappy
-	UpdateOpeness()
+	c.UpdateOpeness()
 }
 
-func ToggleState() {
+func (c *Console) ToggleState() {
 	GameConsole.CurrentState = (GameConsole.CurrentState + 1) % 3
-	Open(GameConsole.CurrentState)
+	c.SetState(GameConsole.CurrentState)
 }
 
-func UpdateOpeness() {
-	dOpen := rl.GetFrameTime() * openDelta
-	if openT < openTarget {
-		openT += dOpen
+func (c *Console) UpdateOpeness() {
+	dOpen := rl.GetFrameTime() * c.Speed
+	if c.Y1 < c.GetTargetHeight() {
+		c.Y1 += dOpen
 
-		if openT > openTarget {
-			openT = openTarget
+		if c.Y1 > c.GetTargetHeight() {
+			c.Y1 = c.GetTargetHeight()
 		}
-	} else if openT > openTarget {
-		openT -= dOpen
-		if openT < 0 {
-			openT = 0
+	} else if c.Y1 > c.GetTargetHeight() {
+		c.Y1 -= dOpen
+		if c.Y1 < 0 {
+			c.Y1 = 0
 		}
 	}
-}
-
-func GetConsoleBottom() float32 {
-	return lerp(1.0, consoleWindowYb, openT) * BackBufferHeight
 }
 
 // @Incomplete: Normal lerp function.

@@ -1,7 +1,20 @@
 /:Console
-	InputBackgroundColor 	(28, 200, 200, 188)
-	OutputBackgroundColor 	(100, 100, 100, 100)
+	InputBackgroundColor 	(200, 0, 0, 100)
+	OutputBackgroundColor 	(0, 0, 0, 255)
 	VerticalGradient 		true
+
+	Speed 					1000.0
+
+	ScreenPercentX			0.1
+	ScreenPercentX1			0.9
+
+	ScreenPercentY			0.0
+
+	ScreenPercentYSmall  	0.4
+	ScreenPercentYBig		0.8
+	ScreenPercentYClosed 	0.0
+
+	StopTheGame 			false
 
 /:Volume
 	All      0.5
@@ -21,3 +34,6 @@
 	Title 			"Invaders"
 	HiDPI 			true
 	MSAA			true
+
+	Aspect 			1.0
+	MinimalSize 	1.0

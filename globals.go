@@ -36,6 +36,9 @@ type Display struct {
 	Fullscreen     bool
 	HiDPI          bool
 	MSAA           bool
+
+	Aspect      float32
+	MinimalSize float32
 }
 
 // Some values will be applied from the start, but some will be changed in the first tick of game loop
@@ -47,7 +50,7 @@ var GameDisplay Display = Display{
 
 func InitGameDisplay() {
 	GameDisplay.Height = GameDisplay.VerticalPixels
-	GameDisplay.Width = GameDisplay.Height * Aspect
+	GameDisplay.Width = int(float32(GameDisplay.Height) * GameDisplay.Aspect)
 }
 
 func (Display) Reload() {
@@ -60,7 +63,7 @@ func (Display) Reload() {
 
 	// Check if in main thread
 	GameDisplay.Height = GameDisplay.VerticalPixels
-	GameDisplay.Width = GameDisplay.Height * Aspect
+	GameDisplay.Width = int(float32(GameDisplay.Height) * GameDisplay.Aspect)
 
 	// This need to be called in main thread.
 	// @Cleanup: Or move vars.go assigment in main thread. Idk which solution will be less ugly
