@@ -10,6 +10,7 @@ import (
 const OptionColorFlashDuration = 1
 
 // @Incomplete: This will be HandleEscape possible when modes will be incereased
+
 func ToggleMenu() {
 	if Mode == Game {
 		Mode = Menu

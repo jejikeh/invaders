@@ -49,6 +49,10 @@ func SetWindowFlags() {
 		windowFlags |= rl.FlagWindowHighdpi
 	}
 
+	if GameDisplay.MSAA {
+		windowFlags |= rl.FlagMsaa4xHint
+	}
+
 	if GameDisplay.Fullscreen {
 		// @Hack: for some reason fullscreen doesn't work on mac with scaling?
 		// windowFlags |= rl.FlagBorderlessWindowedMode

@@ -22,6 +22,7 @@ type GameMode int
 const (
 	Game GameMode = iota
 	Menu
+	DevConsole
 	// DebugMode
 )
 
@@ -34,16 +35,14 @@ type Display struct {
 	Title          string
 	Fullscreen     bool
 	HiDPI          bool
+	MSAA           bool
 }
 
 // Some values will be applied from the start, but some will be changed in the first tick of game loop
 var GameDisplay Display = Display{
 	VerticalPixels: 720,
-	VSync:          true,
 	MaxFPS:         60,
 	Title:          "Invaders",
-	Fullscreen:     false,
-	HiDPI:          false,
 }
 
 func InitGameDisplay() {

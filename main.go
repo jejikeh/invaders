@@ -106,6 +106,12 @@ func main() {
 
 	firstTick := true
 
+	// Camera stuff
+	// @Cleanup: Decide if we even need the camera at all
+	// @Incomplete: If we need, then how we handle camera? As separate entity?
+
+	// camera := rl.NewCamera2D(rl.NewVector2(0, 0), rl.NewVector2(0, 0), 0, 1)
+
 	for !rl.WindowShouldClose() && !ShouldClose {
 		// @Hack: for some freaking reason IsKeyPressed invokes two times...
 		{
@@ -116,6 +122,11 @@ func main() {
 
 			if rl.IsKeyUp(rl.KeyEscape) {
 				wasPressedPrevFrame = false
+			}
+
+			if rl.IsKeyPressed(rl.KeyGrave) {
+				Mode = DevConsole
+				ToggleState()
 			}
 		}
 
@@ -134,10 +145,7 @@ func main() {
 			SimulateInvaders()
 		} else if Mode == Menu {
 			CurrentPage.Simulate()
-		}
-
-		if rl.IsKeyPressed(rl.KeyO) {
-			Open(OpenBig)
+		} else if Mode == DevConsole {
 		}
 
 		Renderer.Draw(
@@ -145,8 +153,6 @@ func main() {
 				if Mode == Game {
 					DrawInvaders()
 					Debug.Draw()
-					GameConsole.DrawConsole()
-
 				} else if Mode == Menu {
 					// @Incomplete: I think is it better to draw some other stuff instead of the game.
 					// Just look to the shadertoy or twitter and make something relaxing and chill.
@@ -154,6 +160,9 @@ func main() {
 					// So the game will be visivle in the menu
 					// DrawInvaders()
 					CurrentPage.Draw()
+				} else if Mode == DevConsole {
+					DrawInvaders()
+					GameConsole.DrawConsole()
 				}
 			},
 			func() {
