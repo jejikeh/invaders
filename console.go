@@ -4,7 +4,7 @@ import rl "github.com/gen2brain/raylib-go/raylib"
 
 var openT float32 = 0.0
 var openTarget float32 = 0.0
-var openDelta float32 = 100
+var openDelta float32 = 500
 
 type ConsoleConfig struct {
 	InputBackgroundColor rl.Color
@@ -18,6 +18,7 @@ type ConsoleConfig struct {
 
 type Console struct {
 	ConsoleConfig
+	CurrentState ConsoleState
 }
 
 var GameConsole Console = Console{}
@@ -68,6 +69,7 @@ func (c *Console) DrawConsole() {
 }
 
 func Open(state ConsoleState) {
+	GameConsole.CurrentState = state
 	switch state {
 	case OpenSmall:
 		openTarget = float32(GameDisplay.Height) * 0.2
@@ -79,6 +81,11 @@ func Open(state ConsoleState) {
 
 	// to make it snappy
 	UpdateOpeness()
+}
+
+func ToggleState() {
+	GameConsole.CurrentState = (GameConsole.CurrentState + 1) % 3
+	Open(GameConsole.CurrentState)
 }
 
 func UpdateOpeness() {

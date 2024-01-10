@@ -47,10 +47,6 @@ func newEntity(
 	entity.ShadowTint = rl.NewColor(c(.0), c(.0), c(.0), c(1))
 	entity.Visible = true
 	entity.MaxSpeed = 400
-	// entity.addEffect(&RespanwEffect{
-	// 	Entity:   entity,
-	// 	Lifetime: RespawnEffectDefaultLifetime,
-	// })
 
 	return entity
 }
