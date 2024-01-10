@@ -1,6 +1,7 @@
 package main
 
 import (
+	gui "github.com/gen2brain/raylib-go/raygui"
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -69,6 +70,12 @@ func (g *Console) GetTargetHeight() float32 {
 
 func (Console) Reload() {
 	// @Incomplete
+	GameConsole.X = float32(GameDisplay.Width) * GameConsole.ScreenPercentX
+	GameConsole.X1 = (float32(GameDisplay.Width) - GameConsole.X) * GameConsole.ScreenPercentX1
+
+	// @Incomplete: Handle c.Y in GetTargetHeight?
+	GameConsole.Y = float32(GameDisplay.Height) * GameConsole.ScreenPercentY
+	GameConsole.Y1 = GameConsole.GetTargetHeight()
 }
 
 type ConsoleState int
@@ -79,11 +86,15 @@ const (
 	OpenBig
 )
 
+var str = ""
+
 func (c *Console) Draw() {
 	c.UpdateOpeness()
 
 	if c.VerticalGradient {
-		rl.DrawRectangleGradientV(int32(c.X), int32(c.Y), int32(c.X1), int32(c.Y1), c.InputBackgroundColor, c.OutputBackgroundColor)
+		gui.Panel(rl.NewRectangle(c.X, c.Y, c.X1, c.Y1), str)
+		// rl.DrawRectangleGradientV(int32(c.X), int32(c.Y), int32(c.X1), int32(c.Y1), c.InputBackgroundColor, c.OutputBackgroundColor)
+		gui.TextBox(rl.NewRectangle(c.X, c.Y1, c.X1, 32), &str, 24, true)
 	} else {
 		rl.DrawRectangleGradientH(int32(c.X), int32(c.Y), int32(c.X1), int32(c.Y1), c.InputBackgroundColor, c.OutputBackgroundColor)
 	}

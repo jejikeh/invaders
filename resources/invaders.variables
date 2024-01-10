@@ -1,12 +1,13 @@
+# The console struct depends on Display value, so it need to lay below Display?
 /:Console
-	InputBackgroundColor 	(200, 0, 0, 100)
+	InputBackgroundColor 	(0, 0, 0, 100)
 	OutputBackgroundColor 	(0, 0, 0, 255)
 	VerticalGradient 		true
 
 	Speed 					1000.0
 
-	ScreenPercentX			0.1
-	ScreenPercentX1			0.9
+	ScreenPercentX			0.0
+	ScreenPercentX1			1.0
 
 	ScreenPercentY			0.0
 
