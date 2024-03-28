@@ -5,10 +5,10 @@ import (
 )
 
 const (
-	WindowWidth = 640
+	WindowWidth  = 640
 	WindowHeight = 480
-	
-	GameWidth = 320
+
+	GameWidth  = 320
 	GameHeight = 240
 )
 
@@ -16,6 +16,7 @@ func main() {
 	g := NewGame()
 
 	ebiten.SetWindowSize(WindowWidth, WindowHeight)
+	ebiten.SetWindowTitle("Invaders")
 
 	if err := ebiten.RunGame(g); err != nil {
 		panic(err)

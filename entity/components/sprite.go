@@ -1,10 +1,10 @@
 package components
 
 import (
-	"math"
-	"os"
 	"image"
 	_ "image/png"
+	"math"
+	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -38,7 +38,7 @@ func loadImageFromPath(path string) *ebiten.Image {
 	// @Cleanup: Make something like AssetLoader to load this type of things?
 	// Or make just simple file with constants to path of assets.
 	// Also, this can be done in .vars file to manage it more nicely.
-	
+
 	imageContent, err := os.Open(path)
 
 	if err != nil {
@@ -52,7 +52,7 @@ func loadImageFromPath(path string) *ebiten.Image {
 	if err != nil {
 		panic(err)
 	}
-	
+
 	return ebiten.NewImageFromImage(img)
 }
 
