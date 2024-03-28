@@ -2,6 +2,9 @@ package components
 
 import (
 	"math"
+	"os"
+	"image"
+	_ "image/png"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -13,9 +16,9 @@ type Sprite struct {
 	DisplayOptions *ebiten.DrawImageOptions
 }
 
-func NewSprite(image *ebiten.Image, t *Transform) *Sprite {
+func NewSprite(path string, t *Transform) *Sprite {
 	s := &Sprite{
-		Image:          image,
+		Image:          loadImageFromPath(path),
 		Transform:      t,
 		DisplayOptions: &ebiten.DrawImageOptions{},
 	}
@@ -29,6 +32,28 @@ func (s *Sprite) Draw(screen *ebiten.Image) {
 	s.updateImageDisplayOptions()
 
 	screen.DrawImage(s.Image, s.DisplayOptions)
+}
+
+func loadImageFromPath(path string) *ebiten.Image {
+	// @Cleanup: Make something like AssetLoader to load this type of things?
+	// Or make just simple file with constants to path of assets.
+	// Also, this can be done in .vars file to manage it more nicely.
+	
+	imageContent, err := os.Open(path)
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer imageContent.Close()
+
+	img, _, err := image.Decode(imageContent)
+
+	if err != nil {
+		panic(err)
+	}
+	
+	return ebiten.NewImageFromImage(img)
 }
 
 func (s *Sprite) updateImageDisplayOptions() {
