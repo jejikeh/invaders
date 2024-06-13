@@ -5,7 +5,7 @@ import (
 	"unsafe"
 )
 
-func TestArena(t *testing.T) {
+func TestArenaNew(t *testing.T) {
 	arena := NewArena(1024)
 
 	type T struct {
@@ -38,6 +38,39 @@ func TestArena(t *testing.T) {
 	assertEqual(t, t4.A, 3)
 	assertEqual(t, t1.A, 0)
 	assertEqual(t, arena.size, unsafe.Sizeof(t4))
+}
+
+func TestArenaGrow(t *testing.T) {
+	arena := NewArena(8)
+
+	type TestStruct8Bytes struct {
+		A uint32
+		B uint32
+	}
+
+	type Test [8]TestStruct8Bytes
+
+	t1 := New[Test](arena)
+
+	assertEqual(t, t1[0].A, 0)
+	assertEqual(t, t1[1].A, 0)
+}
+
+func TestAllign(t *testing.T) {
+	type T struct {
+		A uint32
+		B uint32
+		C bool
+	}
+
+	x := &T{A: 1, B: 2, C: true}
+
+	xPtrBefore := unsafe.Pointer(&x)
+
+	y := Align(x)
+	xPtrAfter := unsafe.Pointer(&y)
+	assertEqual(t, uintptr(xPtrBefore), uintptr(xPtrAfter))
+
 }
 
 func assertEqual[T comparable](t *testing.T, a, b T) {
