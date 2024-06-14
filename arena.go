@@ -1,5 +1,11 @@
 package gomemory
 
+/*
+#cgo CFLAGS: -g -Wall
+#include <stdio.h>
+#include <stdlib.h>
+*/
+import "C"
 import (
 	"fmt"
 	"reflect"
@@ -7,79 +13,65 @@ import (
 	"unsafe"
 )
 
-type Arena struct {
-	data     unsafe.Pointer
-	size     uintptr
-	capacity uint32
+var ErrAlignmentIsNotPowerOfTwo = fmt.Errorf("alignment size is not power of two")
+var ErrArenaOverflow = fmt.Errorf("arena overflow")
+
+type Arena interface {
+	Alloc(size uintptr, align uintptr) unsafe.Pointer
+	Free()
 }
 
-func NewArena(capacity uint32) *Arena {
-	a := &Arena{
-		data:     unsafe.Pointer(&make([]byte, capacity)[0]),
-		size:     0,
-		capacity: capacity,
+func New[T any](arena Arena) *T {
+	t := new(T)
+	buf := arena.Alloc(reflect.Indirect(reflect.ValueOf(t)).Type().Size(), unsafe.Alignof(t))
+	return (*T)(buf)
+}
+
+type MallocArena struct {
+	start  unsafe.Pointer
+	end    unsafe.Pointer
+	cursor unsafe.Pointer
+}
+
+func NewMallocArena(size int) *MallocArena {
+	start := C.malloc(C.size_t(size))
+	end := unsafe.Add(start, size)
+
+	m := &MallocArena{
+		start:  start,
+		end:    end,
+		cursor: end,
 	}
 
-	runtime.SetFinalizer(a, func(a *Arena) {
-		a.Free()
+	runtime.SetFinalizer(m, func(m *MallocArena) {
+		C.free(m.start)
 	})
 
-	return a
+	return m
 }
 
-func (a *Arena) Alloc(size uintptr) (unsafe.Pointer, error) {
-	if a.size+size > uintptr(a.capacity) {
-		panic("arena overflow")
-	}
-
-	a.data = unsafe.Pointer(uintptr(a.data) + a.size)
-	buf := unsafe.Slice((*byte)(a.data), a.size)
-	for i := range buf {
-		buf[i] = 0x00000000
-	}
-	a.size += size
-
-	return unsafe.Pointer(unsafe.SliceData(buf)), nil
-}
-
-func (a *Arena) Free() {
-	a.size = 0
-	a.data = unsafe.Pointer(&make([]byte, a.capacity)[0])
-}
-
-func (a *Arena) Print() {
-	fmt.Printf("Arena{data: %p, size: %d, capacity: %d}\n", a.data, a.size, a.capacity)
-}
-
-func New[T any](arena *Arena) *T {
-	t := new(T)
-	buf, err := arena.Alloc(reflect.Indirect(reflect.ValueOf(t)).Type().Size())
-	if err != nil {
-		panic(err)
-	}
-	t = (*T)(buf)
-
-	return t
-}
-
-var ErrAlignmentIsNotPowerOfTwo = fmt.Errorf("alignment size is not power of two")
-
-func alignPointer(ptr unsafe.Pointer, size uintptr) unsafe.Pointer {
-	if size != 0 && (size&(size-1)) != 0 {
+func (b *MallocArena) Alloc(size uintptr, align uintptr) unsafe.Pointer {
+	if !isPowerOfTwo(align) {
 		panic(ErrAlignmentIsNotPowerOfTwo)
 	}
 
-	offset := uintptr(ptr) & (size - 1)
-
-	if offset != 0 {
-		ptr = unsafe.Add(ptr, size-offset)
+	newCursorPos := (uintptr(b.cursor) - size) & ^(align - 1)
+	if newCursorPos < uintptr(b.start) {
+		panic(ErrArenaOverflow)
 	}
+	b.cursor = unsafe.Pointer(newCursorPos)
 
-	return ptr
+	return b.cursor
 }
 
-func Align[T any](t T) T {
-	align := uintptr(unsafe.Alignof(t))
-	newPtr := alignPointer(unsafe.Pointer(&t), align)
-	return *(*T)(newPtr)
+func (b *MallocArena) Free() {
+	b.cursor = b.end
+}
+
+func (b *MallocArena) size() uintptr {
+	return uintptr(b.end) - uintptr(b.cursor)
+}
+
+func isPowerOfTwo[T int | uint | uintptr](x T) bool {
+	return x != 0 && x&(x-1) == 0
 }
