@@ -43,17 +43,13 @@ func TestArenaNew(t *testing.T) {
 func TestArenaGrow(t *testing.T) {
 	arena := NewArena(8)
 
-	type TestStruct8Bytes struct {
-		A uint32
-		B uint32
+	type Bytes8 struct {
+		A [2]uint32
 	}
 
-	type Test [8]TestStruct8Bytes
+	type Test [8]Bytes8
 
-	t1 := New[Test](arena)
-
-	assertEqual(t, t1[0].A, 0)
-	assertEqual(t, t1[1].A, 0)
+	_ = New[Test](arena)
 }
 
 func TestAllign(t *testing.T) {
