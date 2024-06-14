@@ -23,7 +23,7 @@ type Arena interface {
 
 func New[T any](arena Arena) *T {
 	t := new(T)
-	buf := arena.Alloc(reflect.Indirect(reflect.ValueOf(t)).Type().Size(), unsafe.Alignof(t))
+	buf := arena.Alloc(indirectSize(t), unsafe.Alignof(t))
 	return (*T)(buf)
 }
 
@@ -70,6 +70,17 @@ func (b *MallocArena) Free() {
 
 func (b *MallocArena) size() uintptr {
 	return uintptr(b.end) - uintptr(b.cursor)
+}
+
+func AproximateSize[T any](count int) int {
+	t := new(T)
+	size := int(indirectSize(t))
+	align := int(unsafe.Alignof(t))
+	return (size + align) * count
+}
+
+func indirectSize[T any](t T) uintptr {
+	return reflect.Indirect(reflect.ValueOf(t)).Type().Size()
 }
 
 func isPowerOfTwo[T int | uint | uintptr](x T) bool {

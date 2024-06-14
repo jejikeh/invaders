@@ -1,19 +1,21 @@
 package gomemory
 
-import "unsafe"
+import (
+	"unsafe"
+)
 
 type Bump interface {
 	Mark() unsafe.Pointer
 	ResetTo(unsafe.Pointer)
 }
 
-var ErrAlreadyBumped = "already bumped"
-var ErrNotBumped = "not bumped"
+var ErrAlreadyMarked = "already marked"
+var ErrNotMarked = "not marked"
 
 type SingleBump struct {
 	MallocArena
 
-	bump bool
+	mark bool
 }
 
 func NewSingleBump(size int) *SingleBump {
@@ -22,19 +24,25 @@ func NewSingleBump(size int) *SingleBump {
 	}
 }
 
+func (b *SingleBump) Free() {
+	b.mark = false
+	b.MallocArena.Free()
+}
+
 func (b *SingleBump) Mark() unsafe.Pointer {
-	if b.bump {
-		panic(ErrAlreadyBumped)
+	if b.mark {
+		panic(ErrAlreadyMarked)
 	}
-	b.bump = true
+	b.mark = true
 
 	return b.cursor
 }
 
 func (b *SingleBump) ResetTo(ptr unsafe.Pointer) {
-	if !b.bump {
-		panic(ErrNotBumped)
+	if !b.mark {
+		panic(ErrNotMarked)
 	}
 
 	b.cursor = ptr
+	b.mark = false
 }

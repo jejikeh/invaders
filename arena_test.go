@@ -1,15 +1,13 @@
 package gomemory
 
 import (
+	"fmt"
 	"testing"
-	"unsafe"
 )
 
-func TestArenaNew(t *testing.T) {
-	intSize := int(unsafe.Sizeof(uint32(0)))
-	align := int(unsafe.Alignof(uint32(0)))
+func TestMallocArenaNewObject(t *testing.T) {
 	count := 1000
-	arena := NewMallocArena((intSize + align) * count)
+	arena := NewMallocArena(AproximateSize[uint32](count))
 	defer arena.Free()
 
 	var ints []*uint32
@@ -31,31 +29,70 @@ func TestArenaNew(t *testing.T) {
 	}
 }
 
-func TestArenaGrow(t *testing.T) {
-	// 	arena := NewBumpDown(8)
+func TestMallocArenaFree(t *testing.T) {
+	arena := NewMallocArena(1024)
+	defer arena.Free()
 
-	// 	type Bytes8 struct {
-	// 		A [2]uint32
-	// 	}
+	type someStruct struct {
+		A uint32
+		S string
+	}
 
-	// 	type Test [8]Bytes8
+	x := New[someStruct](arena)
+	x.A = 1
+	x.S = "foo"
 
-	// _ = New[Test](arena)
+	arena.Free()
+
+	y := New[someStruct](arena)
+	y.A = 2
+	y.S = "bar"
+
+	if x.A != y.A {
+		t.Errorf("x.A expected %d got %d", y.A, x.A)
+	}
+
+	if x.S != y.S {
+		t.Errorf("x.S expected %s got %s", y.S, x.S)
+	}
 }
 
-func TestAllign(t *testing.T) {
-	// type T struct {
-	// 	A uint32
-	// 	B uint32
-	// 	C bool
-	// }
+func BenchmarkMallocArenaRuntimeNewObject(b *testing.B) {
+	type noScanObject struct {
+		a byte
+		b int
+		c uint64
+		d complex128
+	}
 
-	// x := &T{A: 1, B: 2, C: true}
-
-	// xPtrBefore := unsafe.Pointer(&x)
-
-	// y := Align(x)
-	// xPtrAfter := unsafe.Pointer(&y)
-	// assertEqual(t, uintptr(xPtrBefore), uintptr(xPtrAfter))
-
+	for _, objectCount := range []int{100, 1000, 10000, 1000000} {
+		b.Run(fmt.Sprintf("%d", objectCount), func(b *testing.B) {
+			arena := NewMallocArena(AproximateSize[noScanObject](objectCount * b.N))
+			defer arena.Free()
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				for j := 0; j < objectCount; j++ {
+					x := New[noScanObject](arena)
+					x.b = j
+					x.a = byte(1)
+					x.d = complex(float64(j), float64(j))
+					x.c = uint64(j)
+				}
+			}
+		})
+	}
 }
+
+// func BenchmarkRuntimeNewObject(b *testing.B) {
+// 	for _, objectCount := range []int{100, 1_000, 10_000, 100_000, 1_000_000} {
+// 		b.Run(fmt.Sprintf("%d", objectCount), func(b *testing.B) {
+// 			a := newRuntimeAllocator[noScanObject]()
+// 			b.ReportAllocs()
+// 			for i := 0; i < b.N; i++ {
+// 				for j := 0; j < objectCount; j++ {
+// 					_ = a.new()
+// 				}
+// 			}
+// 		})
+// 	}
+// }

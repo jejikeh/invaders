@@ -1,6 +1,9 @@
 package gomemory
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestBump(t *testing.T) {
 	b := NewSingleBump(1024)
@@ -36,5 +39,33 @@ func TestBump(t *testing.T) {
 
 	if *y != 3 {
 		t.Errorf("y = %d, want 3", *y)
+	}
+}
+
+func BenchmarkSingleBumpRuntimeNewObject(b *testing.B) {
+	type noScanObject struct {
+		a byte
+		b int
+		c uint64
+		d complex128
+	}
+
+	for _, objectCount := range []int{100, 1000, 10000, 1000000} {
+		b.Run(fmt.Sprintf("%d", objectCount), func(b *testing.B) {
+			arena := NewSingleBump(AproximateSize[noScanObject](objectCount * b.N))
+			defer arena.Free()
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				iMark := arena.Mark()
+				for j := 0; j < objectCount; j++ {
+					x := New[noScanObject](arena)
+					x.b = j
+					x.a = byte(1)
+					x.d = complex(float64(j), float64(j))
+					x.c = uint64(j)
+				}
+				arena.ResetTo(iMark)
+			}
+		})
 	}
 }
