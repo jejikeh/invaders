@@ -1,4 +1,4 @@
-package goarena
+package gomemory
 
 import (
 	"testing"

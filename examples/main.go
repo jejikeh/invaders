@@ -1,20 +1,20 @@
 package main
 
-import "github.com/jejikeh/goarena"
+import "github.com/jejikeh/gomemory"
 
 func main() {
-	arena := goarena.NewArena(1)
+	arena := gomemory.NewArena(1)
 	defer arena.Free()
 
 	type T struct {
 		A uint32
 	}
 
-	_ = goarena.New[T](arena)
+	_ = gomemory.New[T](arena)
 
 	arena.Print()
 
-	_ = goarena.New[T](arena)
+	_ = gomemory.New[T](arena)
 
 	arena.Print()
 }

@@ -1,2 +1,2 @@
-# goarena
-Memory arena implementation for Go.
+# gomemory
+Memory allocators implementation for Go.
