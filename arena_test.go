@@ -1,10 +1,11 @@
 package gomemory
 
 import (
-	"fmt"
 	"bytes"
-	"testing"
 	"encoding/binary"
+	"fmt"
+	"testing"
+	"unsafe"
 )
 
 func TestMallocArenaNewObject(t *testing.T) {
@@ -31,35 +32,94 @@ func TestMallocArenaNewObject(t *testing.T) {
 	}
 }
 
+func TestAlignedSizeOfType(t *testing.T) {
+	testAlignedSizeTimes[bool](t, 1000)
+	testAlignedSizeTimes[int8](t, 1000)
+	testAlignedSizeTimes[uint8](t, 1000)
+	testAlignedSizeTimes[int16](t, 1000)
+	testAlignedSizeTimes[uint16](t, 1000)
+	testAlignedSizeTimes[int32](t, 1000)
+	testAlignedSizeTimes[uint32](t, 1000)
+	testAlignedSizeTimes[int64](t, 1000)
+	testAlignedSizeTimes[uint64](t, 1000)
+	testAlignedSizeTimes[int](t, 1000)
+	testAlignedSizeTimes[uint](t, 1000)
+	testAlignedSizeTimes[uintptr](t, 1000)
+	testAlignedSizeTimes[float32](t, 1000)
+	testAlignedSizeTimes[float64](t, 1000)
+	testAlignedSizeTimes[complex64](t, 1000)
+	testAlignedSizeTimes[complex128](t, 1000)
+	testAlignedSizeTimes[string](t, 1000)
+
+	testAlignedSizeTimes[struct {
+		A int
+		B uintptr
+		C struct {
+			CA string
+			CB func(string) int
+			CC float32
+		}
+		D complex64
+		E unsafe.Pointer
+	}](t, 1000)
+}
+
+func testAlignedSizeTimes[T any](t *testing.T, count int) {
+	t.Helper()
+
+	for n := 1; n <= count; n++ {
+		alignedSize := AlignedSizeOf[T](n)
+		arena := NewMallocArena(AlignedSizeOf[T](n))
+
+		for range n {
+			_ = New[T](arena)
+		}
+
+		if alignedSize != int(arena.size()) {
+			t.Errorf("calculated aligned size is %d, but arena size return size %d for %d %T`s", alignedSize, int(arena.size()), n, *new(T))
+		}
+
+		buf := new(bytes.Buffer)
+		if bufLen, err := arena.DumpBuffer(buf); err != nil {
+			t.Error(err)
+		} else if bufLen != alignedSize {
+			t.Errorf("calculated aligned size is %d, but DumpBuffer return size %d for %d %T`s", alignedSize, bufLen, n, *new(T))
+		}
+
+		if arena.Free(); arena.size() != 0 {
+			t.Errorf("arena size is not 0 after Free")
+		}
+	}
+}
+
 func TestMallocArenaMemoryLayout(t *testing.T) {
-	count := 2
-	arena := NewMallocArena(AlignedSizeOf[uint32](count))
+	arena := NewMallocArena(AlignedSizeOf[uint32](2))
 	defer arena.Free()
-	
+
 	x := New[uint32](arena)
-	*x = 123
-	
+	*x = 1
+
 	y := New[uint32](arena)
-	*y = 456
-	
+	*y = 2
+
 	buf := new(bytes.Buffer)
 	bufLen, err := arena.DumpBuffer(buf)
 	if err != nil {
 		t.Error(err)
-	} else if bufLen != AlignedSizeOf[uint32](count) {
-		t.Errorf("expected %d written bytes, but got %d", AlignedSizeOf[uint32](count), bufLen)
+	} else if bufLen != AlignedSizeOf[uint32](2) {
+		t.Errorf("expected %d dumped bytes, but arena reported size is %d", AlignedSizeOf[uint32](2), bufLen)
 	}
-	
+
 	// @Incomplete: Endians.
-	var num uint32
+	var num [2]uint32
 	if err := binary.Read(buf, binary.LittleEndian, &num); err != nil {
 		t.Error(err)
 	}
-	
-	if num != *x {
-		t.Errorf("expected %d in buffer, but got %d", *x, num)
+
+	if num[0] != *x {
+		t.Errorf("expected %d in buffer, but got %d", *x, num[0])
 	}
-	
+
 }
 
 func TestMallocArenaFree(t *testing.T) {
@@ -92,10 +152,10 @@ func TestMallocArenaFree(t *testing.T) {
 
 func BenchmarkMallocArenaRuntimeNewObject(bufLen *testing.B) {
 	type noScanObject struct {
-		a byte
+		a      byte
 		bufLen int
-		c uint64
-		d complex128
+		c      uint64
+		d      complex128
 	}
 
 	for _, objectCount := range []int{100, 1000, 10000, 1000000} {
