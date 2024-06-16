@@ -82,10 +82,10 @@ func testAlignedSizeTimes[T any](t *testing.T, count int) {
 		}
 
 		buf := new(bytes.Buffer)
-		if bufLen, err := arena.DumpBuffer(buf); err != nil {
+		if bufLen, err := arena.WriteRawMemory(buf); err != nil {
 			t.Error(err)
 		} else if bufLen != alignedSize {
-			t.Errorf("calculated aligned size is %d, but DumpBuffer size %d for %d %T`s", alignedSize, bufLen, n, *new(T))
+			t.Errorf("calculated aligned size is %d, but WriteRawMemory size %d for %d %T`s", alignedSize, bufLen, n, *new(T))
 		}
 
 		if arena.Free(); arena.size() != 0 {
@@ -93,7 +93,7 @@ func testAlignedSizeTimes[T any](t *testing.T, count int) {
 		}
 		
 		buf = new(bytes.Buffer)
-		if bufLen, err := arena.DumpBuffer(buf); err != nil {
+		if bufLen, err := arena.WriteRawMemory(buf); err != nil {
 			t.Error(err)
 		} else if bufLen != 0 {
 			t.Errorf("Dump buffer expected to be 0, but got %d", bufLen)
@@ -112,7 +112,7 @@ func TestMallocArenaMemoryLayout(t *testing.T) {
 	*y = 2
 
 	buf := new(bytes.Buffer)
-	bufLen, err := arena.DumpBuffer(buf)
+	bufLen, err := arena.WriteRawMemory(buf)
 	if err != nil {
 		t.Error(err)
 	} else if bufLen != AlignedSizeOf[uint32](2) {

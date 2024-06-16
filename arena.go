@@ -91,7 +91,7 @@ func SizeOf[T any](count int) int {
 	return size * count
 }
 
-func (b *MallocArena) DumpBuffer(w io.Writer) (int, error) {
+func (b *MallocArena) WriteRawMemory(w io.Writer) (int, error) {
 	buf := unsafe.Slice((*byte)(b.cursor), b.size())
 
 	return w.Write(buf)
