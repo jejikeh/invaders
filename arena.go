@@ -77,9 +77,12 @@ func AlignedSizeOf[T any](count int) int {
 	t := new(T)
 	size := int(indirectSize(t))
 	align := int(unsafe.Alignof(t))
-	// @Cleanup: It's wrong. When arena.Alloc is called, actualy it may do not align the pointer if size already aligned.
-	// newCursorPos := (uintptr(b.cursor) - size) & ^(align - 1)
-	return (size + align) * count
+	alignedSize := size
+	for range count {
+		aligned := (alignedSize + align - 1) & ^(align - 1)
+		alignedSize = aligned + size
+	}
+	return alignedSize - size
 }
 
 func SizeOf[T any](count int) int {
