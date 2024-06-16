@@ -2,12 +2,14 @@ package gomemory
 
 import (
 	"fmt"
+	"bytes"
 	"testing"
+	"encoding/binary"
 )
 
 func TestMallocArenaNewObject(t *testing.T) {
 	count := 1000
-	arena := NewMallocArena(AproximateSize[uint32](count))
+	arena := NewMallocArena(AlignedSizeOf[uint32](count))
 	defer arena.Free()
 
 	var ints []*uint32
@@ -27,6 +29,37 @@ func TestMallocArenaNewObject(t *testing.T) {
 			t.Errorf("expected %d got %d", i, *v)
 		}
 	}
+}
+
+func TestMallocArenaMemoryLayout(t *testing.T) {
+	count := 2
+	arena := NewMallocArena(AlignedSizeOf[uint32](count))
+	defer arena.Free()
+	
+	x := New[uint32](arena)
+	*x = 123
+	
+	y := New[uint32](arena)
+	*y = 456
+	
+	buf := new(bytes.Buffer)
+	bufLen, err := arena.DumpBuffer(buf)
+	if err != nil {
+		t.Error(err)
+	} else if bufLen != AlignedSizeOf[uint32](count) {
+		t.Errorf("expected %d written bytes, but got %d", AlignedSizeOf[uint32](count), bufLen)
+	}
+	
+	// @Incomplete: Endians.
+	var num uint32
+	if err := binary.Read(buf, binary.LittleEndian, &num); err != nil {
+		t.Error(err)
+	}
+	
+	if num != *x {
+		t.Errorf("expected %d in buffer, but got %d", *x, num)
+	}
+	
 }
 
 func TestMallocArenaFree(t *testing.T) {
@@ -57,23 +90,23 @@ func TestMallocArenaFree(t *testing.T) {
 	}
 }
 
-func BenchmarkMallocArenaRuntimeNewObject(b *testing.B) {
+func BenchmarkMallocArenaRuntimeNewObject(bufLen *testing.B) {
 	type noScanObject struct {
 		a byte
-		b int
+		bufLen int
 		c uint64
 		d complex128
 	}
 
 	for _, objectCount := range []int{100, 1000, 10000, 1000000} {
-		b.Run(fmt.Sprintf("%d", objectCount), func(b *testing.B) {
-			arena := NewMallocArena(AproximateSize[noScanObject](objectCount * b.N))
+		bufLen.Run(fmt.Sprintf("%d", objectCount), func(bufLen *testing.B) {
+			arena := NewMallocArena(AlignedSizeOf[noScanObject](objectCount * bufLen.N))
 			defer arena.Free()
-			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
+			bufLen.ReportAllocs()
+			for i := 0; i < bufLen.N; i++ {
 				for j := 0; j < objectCount; j++ {
 					x := New[noScanObject](arena)
-					x.b = j
+					x.bufLen = j
 					x.a = byte(1)
 					x.d = complex(float64(j), float64(j))
 					x.c = uint64(j)
@@ -83,12 +116,12 @@ func BenchmarkMallocArenaRuntimeNewObject(b *testing.B) {
 	}
 }
 
-// func BenchmarkRuntimeNewObject(b *testing.B) {
+// func BenchmarkRuntimeNewObject(bufLen *testing.B) {
 // 	for _, objectCount := range []int{100, 1_000, 10_000, 100_000, 1_000_000} {
-// 		b.Run(fmt.Sprintf("%d", objectCount), func(b *testing.B) {
+// 		bufLen.Run(fmt.Sprintf("%d", objectCount), func(bufLen *testing.B) {
 // 			a := newRuntimeAllocator[noScanObject]()
-// 			b.ReportAllocs()
-// 			for i := 0; i < b.N; i++ {
+// 			bufLen.ReportAllocs()
+// 			for i := 0; i < bufLen.N; i++ {
 // 				for j := 0; j < objectCount; j++ {
 // 					_ = a.new()
 // 				}

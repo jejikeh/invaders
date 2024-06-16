@@ -8,6 +8,7 @@ package gomemory
 import "C"
 import (
 	"fmt"
+	"io"
 	"reflect"
 	"runtime"
 	"unsafe"
@@ -72,11 +73,25 @@ func (b *MallocArena) size() uintptr {
 	return uintptr(b.end) - uintptr(b.cursor)
 }
 
-func AproximateSize[T any](count int) int {
+func AlignedSizeOf[T any](count int) int {
 	t := new(T)
 	size := int(indirectSize(t))
 	align := int(unsafe.Alignof(t))
+	// @Cleanup: It's wrong. When arena.Alloc is called, actualy it may do not align the pointer if size already aligned.
+	// newCursorPos := (uintptr(b.cursor) - size) & ^(align - 1)
 	return (size + align) * count
+}
+
+func SizeOf[T any](count int) int {
+	t := new(T)
+	size := int(indirectSize(t))
+	return size * count
+}
+
+func (b *MallocArena) DumpBuffer(w io.Writer) (int, error) {
+	buf := unsafe.Slice((*byte)(b.cursor), b.size())
+
+	return w.Write(buf)
 }
 
 func indirectSize[T any](t T) uintptr {
