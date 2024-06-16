@@ -8,6 +8,8 @@ import (
 	"unsafe"
 )
 
+// @Cleanup: Make sure to name properly tests, also if`s looks kinda ugly a the moment.
+
 func TestMallocArenaNewObject(t *testing.T) {
 	count := 1000
 	arena := NewMallocArena(AlignedSizeOf[uint32](count))
@@ -76,18 +78,25 @@ func testAlignedSizeTimes[T any](t *testing.T, count int) {
 		}
 
 		if alignedSize != int(arena.size()) {
-			t.Errorf("calculated aligned size is %d, but arena size return size %d for %d %T`s", alignedSize, int(arena.size()), n, *new(T))
+			t.Errorf("calculated aligned size is %d, but arena size %d for %d %T`s", alignedSize, int(arena.size()), n, *new(T))
 		}
 
 		buf := new(bytes.Buffer)
 		if bufLen, err := arena.DumpBuffer(buf); err != nil {
 			t.Error(err)
 		} else if bufLen != alignedSize {
-			t.Errorf("calculated aligned size is %d, but DumpBuffer return size %d for %d %T`s", alignedSize, bufLen, n, *new(T))
+			t.Errorf("calculated aligned size is %d, but DumpBuffer size %d for %d %T`s", alignedSize, bufLen, n, *new(T))
 		}
 
 		if arena.Free(); arena.size() != 0 {
 			t.Errorf("arena size is not 0 after Free")
+		}
+		
+		buf = new(bytes.Buffer)
+		if bufLen, err := arena.DumpBuffer(buf); err != nil {
+			t.Error(err)
+		} else if bufLen != 0 {
+			t.Errorf("Dump buffer expected to be 0, but got %d", bufLen)
 		}
 	}
 }
@@ -111,15 +120,21 @@ func TestMallocArenaMemoryLayout(t *testing.T) {
 	}
 
 	// @Incomplete: Endians.
-	var num [2]uint32
+	// @Incomplete: Here, buf contains actual align and since we use top-to-bottom alocations, the buffer also in reverse order.
+	// I think it is better to check individual bytes instead of serializing aligned values. 
+	//To check memory, we still can use alocated objects. They point to the arena buffer.
+	var num [4]uint32
 	if err := binary.Read(buf, binary.LittleEndian, &num); err != nil {
 		t.Error(err)
 	}
 
-	if num[0] != *x {
-		t.Errorf("expected %d in buffer, but got %d", *x, num[0])
+	if num[2] != *x {
+		t.Errorf("expected %d in buffer, but got %d", *x, num[2])
 	}
-
+	
+	if num[0] != *y {
+		t.Errorf("expected %d in buffer, but got %d", *y, num[0])
+	}
 }
 
 func TestMallocArenaFree(t *testing.T) {
