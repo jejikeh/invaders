@@ -12,15 +12,16 @@ type Bump interface {
 var ErrAlreadyMarked = "already marked"
 var ErrNotMarked = "not marked"
 
+// @Incomplete: Remove SingleBump, make it normal bump
 type SingleBump struct {
-	MallocArena
+	*MallocArena
 
 	mark bool
 }
 
 func NewSingleBump(size int) *SingleBump {
 	return &SingleBump{
-		MallocArena: *NewMallocArena(size),
+		MallocArena: NewMallocArena(size),
 	}
 }
 

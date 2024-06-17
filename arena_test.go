@@ -120,9 +120,6 @@ func TestMallocArenaMemoryLayout(t *testing.T) {
 	}
 
 	// @Incomplete: Endians.
-	// @Incomplete: Here, buf contains actual align and since we use top-to-bottom alocations, the buffer also in reverse order.
-	// I think it is better to check individual bytes instead of serializing aligned values. 
-	//To check memory, we still can use alocated objects. They point to the arena buffer.
 	var num [4]uint32
 	if err := binary.Read(buf, binary.LittleEndian, &num); err != nil {
 		t.Error(err)
@@ -134,7 +131,7 @@ func TestMallocArenaMemoryLayout(t *testing.T) {
 	
 	if num[0] != *y {
 		t.Errorf("expected %d in buffer, but got %d", *y, num[0])
-	}
+	}	
 }
 
 func TestMallocArenaFree(t *testing.T) {

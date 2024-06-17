@@ -14,6 +14,9 @@ import (
 	"unsafe"
 )
 
+// @Incomplete: Do not panic, return error.
+// @Cleanup: Create new structure like MemoryBuffer and move start and end to it. 
+// Because i use the same structure in pool. And the MemoryBuffer need to be finalized.
 var ErrAlignmentIsNotPowerOfTwo = fmt.Errorf("alignment size is not power of two")
 var ErrArenaOverflow = fmt.Errorf("arena overflow")
 
