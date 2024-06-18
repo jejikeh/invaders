@@ -6,7 +6,9 @@ package gomemory
 #include <stdlib.h>
 */
 import "C"
+
 import (
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -17,8 +19,10 @@ import (
 // @Incomplete: Do not panic, return error.
 // @Cleanup: Create new structure like MemoryBuffer and move start and end to it.
 // Because i use the same structure in pool. And the MemoryBuffer need to be finalized.
-var ErrAlignmentIsNotPowerOfTwo = fmt.Errorf("alignment size is not power of two")
-var ErrArenaOverflow = fmt.Errorf("arena overflow")
+var (
+	ErrAlignmentIsNotPowerOfTwo = errors.New("alignment size is not power of two")
+	ErrArenaOverflow            = errors.New("arena overflow")
+)
 
 type Arena interface {
 	Alloc(size uintptr, align uintptr) unsafe.Pointer
@@ -28,6 +32,7 @@ type Arena interface {
 func New[T any](arena Arena) *T {
 	t := new(T)
 	buf := arena.Alloc(indirectSize(t), unsafe.Alignof(t))
+
 	return (*T)(buf)
 }
 
@@ -55,6 +60,7 @@ func NewMallocArena(size int) *MallocArena {
 }
 
 func (b *MallocArena) Alloc(size uintptr, align uintptr) unsafe.Pointer {
+	// @Cleanup: Better error handling here.
 	if !isPowerOfTwo(align) {
 		panic(ErrAlignmentIsNotPowerOfTwo)
 	}
@@ -85,19 +91,26 @@ func SizeOfAligned[T any](count int) int {
 		aligned := (alignedSize + align - 1) & ^(align - 1)
 		alignedSize = aligned + size
 	}
+
 	return alignedSize - size
 }
 
 func SizeOf[T any](count int) int {
 	t := new(T)
 	size := int(indirectSize(t))
+
 	return size * count
 }
 
 func (b *MallocArena) WriteRawMemory(w io.Writer) (int, error) {
 	buf := unsafe.Slice((*byte)(b.cursor), b.size())
 
-	return w.Write(buf)
+	n, err := w.Write(buf)
+	if err != nil {
+		return n, fmt.Errorf("failed to write buffer to writed: %w", err)
+	}
+
+	return n, nil
 }
 
 func indirectSize[T any](t T) uintptr {

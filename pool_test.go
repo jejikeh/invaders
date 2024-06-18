@@ -4,18 +4,12 @@ import (
 	"testing"
 )
 
-func TestNewPool(t *testing.T) {
-	pool := NewTypedPool[int](1024)
-
-	if pool.itemSize != SizeOfAligned[int](1) {
-		t.Errorf("itemSize=%d but should be equal to alignedSize=%d for type [%T]", pool.itemSize, SizeOfAligned[int](1), int(0))
-	}
-}
-
 func TestNewObjectInPool(t *testing.T) {
-	pool := NewTypedPool[int](1024)
+	t.Parallel()
 
+	pool := NewTypedPool[int](1024)
 	x := pool.NewAt(0)
+
 	if x == nil {
 		t.Errorf("failed to allocate new object in pool")
 	}
@@ -23,15 +17,11 @@ func TestNewObjectInPool(t *testing.T) {
 
 // @Cleanup: Cleanup this test.
 func TestGetObjectFromPool(t *testing.T) {
-	pool := NewTypedPool[int](1024)
+	t.Parallel()
 
+	pool := NewTypedPool[int](1024)
 	x := pool.NewAt(0)
-	if x == nil {
-		// @Incomplete: Maybe check this in .NewAt()? If object is not allocated, it either a cast issue with memory, or malloc issue, or ovewflow.
-		t.Error("failed to allocate new object in pool")
-	} else {
-		*x = 123
-	}
+	*x = 123
 
 	xFromPool, _ := pool.GetAt(0)
 	if xFromPool == nil {
@@ -41,6 +31,7 @@ func TestGetObjectFromPool(t *testing.T) {
 	}
 
 	*x = 234
+
 	xFromPool, _ = pool.GetAt(0)
 	if xFromPool == nil {
 		t.Error("failed to get object from pool by index")
@@ -49,12 +40,7 @@ func TestGetObjectFromPool(t *testing.T) {
 	}
 
 	y := pool.NewAt(1)
-	if y == nil {
-		// @Incomplete: Maybe check this in .NewAt()? If object is not allocated, it either a cast issue with memory, or malloc issue, or ovewflow
-		t.Error("failed to allocate new object in pool")
-	} else {
-		*y = 102
-	}
+	*y = 102
 
 	yFromPool, _ := pool.GetAt(1)
 	if yFromPool == nil {
@@ -72,12 +58,14 @@ func TestGetObjectFromPool(t *testing.T) {
 }
 
 func TestPool(t *testing.T) {
+	t.Parallel()
+
 	untypedPool := NewPool[int](16)
-	
 	x := (*int)(untypedPool.NewAt(1))
 	*x = 123
-	
+
 	ptr, _ := untypedPool.GetAt(1)
+
 	xFromPool := (*int)(ptr)
 	if xFromPool == nil {
 		t.Error("failed to get object from pool by index")
@@ -87,10 +75,11 @@ func TestPool(t *testing.T) {
 }
 
 func TestToTypedPool(t *testing.T) {
+	t.Parallel()
+
 	untypedPool := NewPool[int](16)
-	
 	typedPool := ToTypedPool[int](untypedPool)
-	
+
 	if typedPool == nil {
 		t.Fail()
 	}

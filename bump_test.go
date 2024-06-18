@@ -5,6 +5,8 @@ import (
 )
 
 func TestBumpResetToMark(t *testing.T) {
+	t.Parallel()
+
 	b := NewBump(1024)
 	defer b.Free()
 

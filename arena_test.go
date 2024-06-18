@@ -3,23 +3,24 @@ package gomemory
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"testing"
 	"unsafe"
 )
 
 // @Cleanup: Make sure to name properly tests, also if`s looks kinda ugly a the moment.
 func TestMallocArenaNewObject(t *testing.T) {
+	t.Parallel()
+
 	count := 1000
+	ints := make([]*uint32, count)
+
 	arena := NewMallocArena(SizeOfAligned[uint32](count))
 	defer arena.Free()
-
-	var ints []*uint32
 
 	for i := range count {
 		x := New[uint32](arena)
 		*x = uint32(i)
-		ints = append(ints, x)
+		ints[i] = x
 	}
 
 	for i := range count {
@@ -34,6 +35,8 @@ func TestMallocArenaNewObject(t *testing.T) {
 }
 
 func TestAlignedSizeOfType(t *testing.T) {
+	t.Parallel()
+
 	testAlignedSizeTimes[bool](t, 1000)
 	testAlignedSizeTimes[int8](t, 1000)
 	testAlignedSizeTimes[uint8](t, 1000)
@@ -101,6 +104,8 @@ func testAlignedSizeTimes[T any](t *testing.T, count int) {
 }
 
 func TestMallocArenaMemoryLayout(t *testing.T) {
+	t.Parallel()
+
 	arena := NewMallocArena(SizeOfAligned[uint32](2))
 	defer arena.Free()
 
@@ -111,6 +116,7 @@ func TestMallocArenaMemoryLayout(t *testing.T) {
 	*y = 2
 
 	buf := new(bytes.Buffer)
+
 	bufLen, err := arena.WriteRawMemory(buf)
 	if err != nil {
 		t.Error(err)
@@ -134,6 +140,8 @@ func TestMallocArenaMemoryLayout(t *testing.T) {
 }
 
 func TestMallocArenaFree(t *testing.T) {
+	t.Parallel()
+
 	arena := NewMallocArena(1024)
 	defer arena.Free()
 
@@ -162,32 +170,6 @@ func TestMallocArenaFree(t *testing.T) {
 }
 
 // @Incomplete: Add tests with different allocating object with different types
-
-func BenchmarkMallocArenaRuntimeNewObject(bufLen *testing.B) {
-	type noScanObject struct {
-		a      byte
-		bufLen int
-		c      uint64
-		d      complex128
-	}
-
-	for _, objectCount := range []int{100, 1000, 10000, 1000000} {
-		bufLen.Run(fmt.Sprintf("%d", objectCount), func(bufLen *testing.B) {
-			arena := NewMallocArena(SizeOfAligned[noScanObject](objectCount * bufLen.N))
-			defer arena.Free()
-			bufLen.ReportAllocs()
-			for i := 0; i < bufLen.N; i++ {
-				for j := 0; j < objectCount; j++ {
-					x := New[noScanObject](arena)
-					x.bufLen = j
-					x.a = byte(1)
-					x.d = complex(float64(j), float64(j))
-					x.c = uint64(j)
-				}
-			}
-		})
-	}
-}
 
 // func BenchmarkRuntimeNewObject(bufLen *testing.B) {
 // 	for _, objectCount := range []int{100, 1_000, 10_000, 100_000, 1_000_000} {

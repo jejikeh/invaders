@@ -4,8 +4,10 @@ import (
 	"unsafe"
 )
 
-var ErrAlreadyMarked = "already marked"
-var ErrNotMarked = "not marked"
+var (
+	ErrAlreadyMarked = "already marked"
+	ErrNotMarked     = "not marked"
+)
 
 type Bump struct {
 	*MallocArena

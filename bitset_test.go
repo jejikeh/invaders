@@ -9,45 +9,49 @@ import (
 // @Cleanup: Refactor these tests.
 
 func TestBitSetSetBit(t *testing.T) {
-	b := NewBitSet[int]()
+	t.Parallel()
 
+	b := NewBitSet[int]()
 	tests := make(map[int]bool, 32)
 
 	for range 32 {
 		r := rand.IntN(33)
-		testSetBit(b, r, t)
+		testSetBit(t, b, r)
+
 		tests[r] = true
 	}
 
 	for i := range 32 {
-		inSet, _ := tests[i]
-		if b.Has(i) != inSet {
-			t.Errorf("for %d expected %t, but got %t in bitset[%v]", i, inSet, b.Has(i), strconv.FormatInt(int64(b.bits), 2))
+		if b.Has(i) != tests[i] {
+			t.Errorf("for %d expected %t, but got %t in bitset[%v]", i, tests[i], b.Has(i), strconv.FormatInt(int64(b.bits), 2))
 		}
 	}
 }
 
 func TestBitSetClear(t *testing.T) {
+	t.Parallel()
+
 	b := NewBitSet[uint8]()
 
-	testSetBit(b, 2, t)
-	testSetBit(b, 3, t)
-	testSetBit(b, 0, t)
+	testSetBit(t, b, 2)
+	testSetBit(t, b, 0)
+	testSetBit(t, b, 3)
 
-	testClearBit(b, 3, t)
-	testClearBit(b, 2, t)
-	testClearBit(b, 0, t)
+	testClearBit(t, b, 3)
+	testClearBit(t, b, 2)
+	testClearBit(t, b, 0)
 }
 
-func testSetBit[T Int](b *BitSet[T], v T, t *testing.T) {
+func testSetBit[T Int](t *testing.T, b *BitSet[T], v T) {
 	t.Helper()
 	b.Set(v)
+
 	if !b.Has(v) {
 		t.Errorf("failed to set %d in bitset=[%s]", v, strconv.FormatInt(int64(b.bits), 2))
 	}
 }
 
-func testClearBit[T Int](b *BitSet[T], v T, t *testing.T) {
+func testClearBit[T Int](t *testing.T, b *BitSet[T], v T) {
 	t.Helper()
 
 	if !b.Has(v) {
@@ -55,6 +59,7 @@ func testClearBit[T Int](b *BitSet[T], v T, t *testing.T) {
 	}
 
 	b.Clear(v)
+
 	if b.Has(v) {
 		t.Errorf("bit %d was not clear in bitset=[%s]", v, strconv.FormatInt(int64(b.bits), 2))
 	}
