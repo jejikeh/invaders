@@ -34,6 +34,10 @@ func (b *BitSet[T]) Clear(v T) {
 	b.bits &= ^(1 << v)
 }
 
+func Bits[T Int](v T) int {
+	return int(unsafe.Sizeof(v))*4
+}
+
 func checkBitOverflow[T Int](v T) {
 	if unsafe.Sizeof(v)*4 < uintptr(v) {
 		panic(ErrBitSetOverflow)

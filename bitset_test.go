@@ -6,6 +6,8 @@ import (
 	"testing"
 )
 
+// @Cleanup: Refactor these tests.
+
 func TestBitSetSetBit(t *testing.T) {
 	b := NewBitSet[int]()
 
