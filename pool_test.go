@@ -7,8 +7,8 @@ import (
 func TestNewPool(t *testing.T) {
 	pool := NewPool[int](1024)
 
-	if pool.itemSize != AlignedSizeOf[int](1) {
-		t.Errorf("itemSize=%d but should be equal to alignedSize=%d for type [%T]", pool.itemSize, AlignedSizeOf[int](1), int(0))
+	if pool.itemSize != SizeOfAligned[int](1) {
+		t.Errorf("itemSize=%d but should be equal to alignedSize=%d for type [%T]", pool.itemSize, SizeOfAligned[int](1), int(0))
 	}
 }
 

@@ -10,8 +10,8 @@ type Pool[T any] struct {
 
 func NewPool[T any](capacity int) *Pool[T] {
 	return &Pool[T]{
-		MallocArena: NewMallocArena(AlignedSizeOf[T](capacity)),
-		itemSize: AlignedSizeOf[T](1),
+		MallocArena: NewMallocArena(SizeOfAligned[T](capacity)),
+		itemSize: SizeOfAligned[T](1),
 		items: make(map[int]*T, capacity),
 	}
 }

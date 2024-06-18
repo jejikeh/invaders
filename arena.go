@@ -76,7 +76,7 @@ func (b *MallocArena) size() uintptr {
 	return uintptr(b.end) - uintptr(b.cursor)
 }
 
-func AlignedSizeOf[T any](count int) int {
+func SizeOfAligned[T any](count int) int {
 	t := new(T)
 	size := int(indirectSize(t))
 	align := int(unsafe.Alignof(t))

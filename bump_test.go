@@ -52,7 +52,7 @@ func BenchmarkSingleBumpRuntimeNewObject(b *testing.B) {
 
 	for _, objectCount := range []int{100, 1000, 10000, 1000000} {
 		b.Run(fmt.Sprintf("%d", objectCount), func(b *testing.B) {
-			arena := NewSingleBump(AlignedSizeOf[noScanObject](objectCount * b.N))
+			arena := NewSingleBump(SizeOfAligned[noScanObject](objectCount * b.N))
 			defer arena.Free()
 			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {

@@ -12,7 +12,7 @@ import (
 
 func TestMallocArenaNewObject(t *testing.T) {
 	count := 1000
-	arena := NewMallocArena(AlignedSizeOf[uint32](count))
+	arena := NewMallocArena(SizeOfAligned[uint32](count))
 	defer arena.Free()
 
 	var ints []*uint32
@@ -70,8 +70,8 @@ func testAlignedSizeTimes[T any](t *testing.T, count int) {
 	t.Helper()
 
 	for n := 1; n <= count; n++ {
-		alignedSize := AlignedSizeOf[T](n)
-		arena := NewMallocArena(AlignedSizeOf[T](n))
+		alignedSize := SizeOfAligned[T](n)
+		arena := NewMallocArena(SizeOfAligned[T](n))
 
 		for range n {
 			_ = New[T](arena)
@@ -102,7 +102,7 @@ func testAlignedSizeTimes[T any](t *testing.T, count int) {
 }
 
 func TestMallocArenaMemoryLayout(t *testing.T) {
-	arena := NewMallocArena(AlignedSizeOf[uint32](2))
+	arena := NewMallocArena(SizeOfAligned[uint32](2))
 	defer arena.Free()
 
 	x := New[uint32](arena)
@@ -115,8 +115,8 @@ func TestMallocArenaMemoryLayout(t *testing.T) {
 	bufLen, err := arena.WriteRawMemory(buf)
 	if err != nil {
 		t.Error(err)
-	} else if bufLen != AlignedSizeOf[uint32](2) {
-		t.Errorf("expected %d dumped bytes, but arena reported size is %d", AlignedSizeOf[uint32](2), bufLen)
+	} else if bufLen != SizeOfAligned[uint32](2) {
+		t.Errorf("expected %d dumped bytes, but arena reported size is %d", SizeOfAligned[uint32](2), bufLen)
 	}
 
 	// @Incomplete: Endians.
@@ -174,7 +174,7 @@ func BenchmarkMallocArenaRuntimeNewObject(bufLen *testing.B) {
 
 	for _, objectCount := range []int{100, 1000, 10000, 1000000} {
 		bufLen.Run(fmt.Sprintf("%d", objectCount), func(bufLen *testing.B) {
-			arena := NewMallocArena(AlignedSizeOf[noScanObject](objectCount * bufLen.N))
+			arena := NewMallocArena(SizeOfAligned[noScanObject](objectCount * bufLen.N))
 			defer arena.Free()
 			bufLen.ReportAllocs()
 			for i := 0; i < bufLen.N; i++ {
