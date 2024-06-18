@@ -131,7 +131,7 @@ func TestMallocArenaMemoryLayout(t *testing.T) {
 	
 	if num[0] != *y {
 		t.Errorf("expected %d in buffer, but got %d", *y, num[0])
-	}	
+	}
 }
 
 func TestMallocArenaFree(t *testing.T) {
@@ -161,6 +161,8 @@ func TestMallocArenaFree(t *testing.T) {
 		t.Errorf("x.S expected %s got %s", y.S, x.S)
 	}
 }
+
+// @Incomplete: Add tests with different allocating object with different types
 
 func BenchmarkMallocArenaRuntimeNewObject(bufLen *testing.B) {
 	type noScanObject struct {

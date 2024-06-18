@@ -7,8 +7,8 @@ import (
 func TestNewPool(t *testing.T) {
 	pool := NewPool[int](1024)
 
-	if pool.elementSize != AlignedSizeOf[int](1) {
-		t.Errorf("elementSize=%d but should be equal to alignedSize=%d for type [%T]", pool.elementSize, AlignedSizeOf[int](1), int(0))
+	if pool.itemSize != AlignedSizeOf[int](1) {
+		t.Errorf("itemSize=%d but should be equal to alignedSize=%d for type [%T]", pool.itemSize, AlignedSizeOf[int](1), int(0))
 	}
 }
 
@@ -33,7 +33,7 @@ func TestGetObjectFromPool(t *testing.T) {
 		*x = 123
 	}
 	
-	xFromPool := pool.Get(0)
+	xFromPool, _ := pool.Get(0)
 	if xFromPool == nil {
 		t.Error("failed to get object from pool by index")
 	} else if *xFromPool != 123 {
@@ -41,7 +41,7 @@ func TestGetObjectFromPool(t *testing.T) {
 	}
 	
 	*x = 234
-	xFromPool = pool.Get(0)
+	xFromPool, _ = pool.Get(0)
 	if xFromPool == nil {
 		t.Error("failed to get object from pool by index")
 	} else if *xFromPool != 234 {
@@ -56,14 +56,14 @@ func TestGetObjectFromPool(t *testing.T) {
 		*y = 102
 	}
 	
-	yFromPool := pool.Get(1)
+	yFromPool, _ := pool.Get(1)
 	if yFromPool == nil {
 		t.Error("failed to get object from pool by index")
 	} else if *yFromPool != 102 {
 		t.Errorf("expected %d but got %d", 102, *yFromPool)
 	}
 	
-	xFromPool = pool.Get(0)
+	xFromPool, _ = pool.Get(0)
 	if xFromPool == nil {
 		t.Error("failed to get object from pool by index")
 	} else if *xFromPool != 234 {
