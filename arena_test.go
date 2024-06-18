@@ -9,7 +9,6 @@ import (
 )
 
 // @Cleanup: Make sure to name properly tests, also if`s looks kinda ugly a the moment.
-
 func TestMallocArenaNewObject(t *testing.T) {
 	count := 1000
 	arena := NewMallocArena(SizeOfAligned[uint32](count))
@@ -91,7 +90,7 @@ func testAlignedSizeTimes[T any](t *testing.T, count int) {
 		if arena.Free(); arena.size() != 0 {
 			t.Errorf("arena size is not 0 after Free")
 		}
-		
+
 		buf = new(bytes.Buffer)
 		if bufLen, err := arena.WriteRawMemory(buf); err != nil {
 			t.Error(err)
@@ -128,7 +127,7 @@ func TestMallocArenaMemoryLayout(t *testing.T) {
 	if num[2] != *x {
 		t.Errorf("expected %d in buffer, but got %d", *x, num[2])
 	}
-	
+
 	if num[0] != *y {
 		t.Errorf("expected %d in buffer, but got %d", *y, num[0])
 	}

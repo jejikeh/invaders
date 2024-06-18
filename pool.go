@@ -3,16 +3,16 @@ package gomemory
 // @Cleanup: The pool memory can be corrupted, since it embed arena, but arena allocator can allocate any type of object, and pool cannot. This can be prevented to create check in pool.Allocate for correct item size passed to method
 type Pool[T any] struct {
 	*MallocArena
-	
+
 	itemSize int
-	items map[int]*T
+	items    map[int]*T
 }
 
 func NewPool[T any](capacity int) *Pool[T] {
 	return &Pool[T]{
 		MallocArena: NewMallocArena(SizeOfAligned[T](capacity)),
-		itemSize: SizeOfAligned[T](1),
-		items: make(map[int]*T, capacity),
+		itemSize:    SizeOfAligned[T](1),
+		items:       make(map[int]*T, capacity),
 	}
 }
 

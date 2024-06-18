@@ -14,7 +14,7 @@ func TestNewPool(t *testing.T) {
 
 func TestNewObjectInPool(t *testing.T) {
 	pool := NewPool[int](1024)
-	
+
 	x := pool.New(0)
 	if x == nil {
 		t.Errorf("failed to allocate new object in pool")
@@ -24,7 +24,7 @@ func TestNewObjectInPool(t *testing.T) {
 // @Cleanup: Cleanup this test.
 func TestGetObjectFromPool(t *testing.T) {
 	pool := NewPool[int](1024)
-	
+
 	x := pool.New(0)
 	if x == nil {
 		// @Incomplete: Maybe check this in .New()? If object is not allocated, it either a cast issue with memory, or malloc issue, or ovewflow.
@@ -32,14 +32,14 @@ func TestGetObjectFromPool(t *testing.T) {
 	} else {
 		*x = 123
 	}
-	
+
 	xFromPool, _ := pool.Get(0)
 	if xFromPool == nil {
 		t.Error("failed to get object from pool by index")
 	} else if *xFromPool != 123 {
 		t.Errorf("expected %d but got %d", 123, *xFromPool)
 	}
-	
+
 	*x = 234
 	xFromPool, _ = pool.Get(0)
 	if xFromPool == nil {
@@ -47,7 +47,7 @@ func TestGetObjectFromPool(t *testing.T) {
 	} else if *xFromPool != 234 {
 		t.Errorf("expected %d but got %d", 234, *xFromPool)
 	}
-	
+
 	y := pool.New(1)
 	if y == nil {
 		// @Incomplete: Maybe check this in .New()? If object is not allocated, it either a cast issue with memory, or malloc issue, or ovewflow
@@ -55,14 +55,14 @@ func TestGetObjectFromPool(t *testing.T) {
 	} else {
 		*y = 102
 	}
-	
+
 	yFromPool, _ := pool.Get(1)
 	if yFromPool == nil {
 		t.Error("failed to get object from pool by index")
 	} else if *yFromPool != 102 {
 		t.Errorf("expected %d but got %d", 102, *yFromPool)
 	}
-	
+
 	xFromPool, _ = pool.Get(0)
 	if xFromPool == nil {
 		t.Error("failed to get object from pool by index")
