@@ -17,8 +17,14 @@ type BitSet[T Int] struct {
 	bits T
 }
 
-func NewBitSet[T Int]() *BitSet[T] {
-	return &BitSet[T]{}
+func NewBitSet[T Int](values ...T) *BitSet[T] {
+	bitset := &BitSet[T]{}
+
+	for _, value := range values {
+		bitset.Set(value)
+	}
+
+	return bitset
 }
 
 func (b *BitSet[T]) Set(v T) {
@@ -32,13 +38,17 @@ func (b *BitSet[T]) Has(v T) bool {
 	return b.bits&(1<<v) != 0
 }
 
+func (b *BitSet[T]) Check(mask *BitSet[T]) bool {
+	return b.bits&mask.bits != 0
+}
+
 func (b *BitSet[T]) Unset(v T) {
 	checkBitOverflow[T](v)
 
 	b.bits &= ^(1 << v)
 }
 
-func Bits[T Int](v T) int {
+func Sizeof[T Int](v T) int {
 	return int(unsafe.Sizeof(v)) * bitsInByte
 }
 
