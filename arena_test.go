@@ -169,6 +169,59 @@ func TestMallocArenaFree(t *testing.T) {
 	}
 }
 
+func TestNewStructPointer(t *testing.T) { // @Incomplete: Useless.
+	t.Parallel()
+
+	type A struct {
+		aa bool
+		ab int32
+	}
+
+	type B struct {
+		ba *A
+	}
+
+	arena := NewMallocArena(SizeOfAligned[B](2))
+	defer arena.Free()
+
+	b := New[B](arena)
+	if b.ba != nil {
+		t.Fail()
+	}
+
+	b.ba = New[A](arena)
+	b.ba.aa = true
+	b.ba.ab = 1
+
+	if b.ba.aa != true || b.ba.ab != 1 {
+		t.Fail()
+	}
+}
+
+func TestNewStructEmbeding(t *testing.T) { // @Incomplete: Useless.
+	t.Parallel()
+
+	type A struct {
+		aa bool
+		ab int32
+	}
+
+	type B struct {
+		A
+	}
+
+	arena := NewMallocArena(SizeOfAligned[B](2))
+	defer arena.Free()
+
+	b := New[B](arena)
+	b.A.aa = true
+	b.A.ab = 1
+
+	if b.A.aa != true || b.A.ab != 1 {
+		t.Fail()
+	}
+}
+
 // @Incomplete: Add tests with different allocating object with different types
 
 // func BenchmarkRuntimeNewObject(bufLen *testing.B) {
