@@ -1,0 +1,23 @@
+linters:
+  disable:
+  - testpackage
+  - depguard
+  - exhaustruct
+  - gochecknoglobals
+  - forbidigo
+  - lll
+  
+  presets:
+  - bugs
+  - comment
+  - complexity
+  - error
+  - format
+  - import
+  - metalinter
+  - module
+  - performance
+  - sql
+  - style
+  - test
+  - unused
