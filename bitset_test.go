@@ -45,19 +45,23 @@ func TestBitSetClear(t *testing.T) {
 func TestComposeNewBitSet(t *testing.T) {
 	t.Parallel()
 
-	b := NewBitSet[int]()
+	b := NewBitSet[int](3)
 	mask := NewBitSet[int](1, 3, 7)
 
 	if b.Check(mask) {
-		t.Errorf("[%s] is not valid for mask [%s]", strconv.FormatInt(int64(b.bits), 2), strconv.FormatInt(int64(b.bits), 2))
+		t.Errorf("[%s] is not valid for mask [%s]", strconv.FormatInt(int64(b.bits), 2), strconv.FormatInt(int64(mask.bits), 2))
 	}
 
-	b.Set(1)
-	b.Set(3)
-	b.Set(7)
+	if b.Set(1); b.Check(mask) {
+		t.Errorf("[%s] is not valid for mask [%s]", strconv.FormatInt(int64(b.bits), 2), strconv.FormatInt(int64(mask.bits), 2))
+	}
 
-	if !b.Check(mask) {
-		t.Errorf("[%s] is valid for mask [%s]", strconv.FormatInt(int64(b.bits), 2), strconv.FormatInt(int64(b.bits), 2))
+	if b.Set(2); b.Check(mask) {
+		t.Errorf("[%s] is not valid for mask [%s]", strconv.FormatInt(int64(b.bits), 2), strconv.FormatInt(int64(mask.bits), 2))
+	}
+
+	if b.Set(7); !b.Check(mask) {
+		t.Errorf("[%s] is valid for mask [%s]", strconv.FormatInt(int64(b.bits), 2), strconv.FormatInt(int64(mask.bits), 2))
 	}
 }
 

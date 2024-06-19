@@ -39,7 +39,7 @@ func (b *BitSet[T]) Has(v T) bool {
 }
 
 func (b *BitSet[T]) Check(mask *BitSet[T]) bool {
-	return b.bits&mask.bits != 0
+	return b.bits&mask.bits == mask.bits
 }
 
 func (b *BitSet[T]) Unset(v T) {
