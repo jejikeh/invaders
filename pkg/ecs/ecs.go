@@ -1,14 +1,14 @@
-package wooff
+package ecs
 
 import (
 	"reflect"
 
-	"github.com/jejikeh/gomemory"
+	"github.com/jejikeh/invaders/pkg/gomem"
 )
 
 // @Incomplete: For now, there are no way to delete entities in the layer.
 // For deleting, it might be needed to implement some sort of free-list tracking
-// in arena allocators inside gomemory.
+// in arena allocators inside gomem.
 // @Incomplete: For now, there are no way to resize component and entity pool, so the
 
 // max count of components and entities are actually limited by bit size of ComponentID and EntityID
@@ -21,23 +21,23 @@ type EntityID int64
 
 type EntityInfo struct {
 	ID            EntityID
-	ComponentMask gomemory.BitSet[ComponentID]
+	ComponentMask gomem.BitSet[ComponentID]
 }
 
 type Layer struct {
-	componentPool []*gomemory.Pool
+	componentPool []*gomem.Pool
 	componentIDs  map[string]ComponentID
 
 	// @Incomplete: I use TypedPool here because in the future the entities can be removed, though it can be replaced by Arena in the future
-	entities *gomemory.TypedPool[EntityInfo]
+	entities *gomem.TypedPool[EntityInfo]
 }
 
 func NewLayer() *Layer {
 	return &Layer{
 		// @Incomplete: We could store this data manually to give complete ownership of memory to Layer?
-		componentPool: make([]*gomemory.Pool, gomemory.Sizeof[ComponentID](ComponentID(0))),
-		componentIDs:  make(map[string]ComponentID, gomemory.Sizeof[ComponentID](ComponentID(0))),
-		entities:      gomemory.NewTypedPool[EntityInfo](MaxEntityCount),
+		componentPool: make([]*gomem.Pool, gomem.Sizeof[ComponentID](ComponentID(0))),
+		componentIDs:  make(map[string]ComponentID, gomem.Sizeof[ComponentID](ComponentID(0))),
+		entities:      gomem.NewTypedPool[EntityInfo](MaxEntityCount),
 	}
 }
 
@@ -59,7 +59,7 @@ func Attach[T any](layer *Layer, entityID EntityID) *T {
 	if layer.componentPool[componentID] == nil {
 		// @Cleanup: https://www.david-colson.com/2020/02/09/making-a-simple-ecs.html
 		// Potential improvements and alternatives
-		layer.componentPool[componentID] = gomemory.NewPool[T](MaxEntityCount)
+		layer.componentPool[componentID] = gomem.NewPool[T](MaxEntityCount)
 	}
 
 	componentPool := layer.componentPool[componentID]
@@ -130,7 +130,7 @@ func GetComponentID[T any](layer *Layer) ComponentID {
 func (l *Layer) Request(components ...ComponentID) []EntityID {
 	var entities []EntityID
 
-	mask := gomemory.NewBitSet[ComponentID](components...)
+	mask := gomem.NewBitSet[ComponentID](components...)
 
 	for i := range l.entities.Length() {
 		if entity, ok := l.entities.GetAt(i); ok && entity.ComponentMask.Check(mask) {
