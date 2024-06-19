@@ -58,7 +58,7 @@ func testClearBit[T Int](t *testing.T, b *BitSet[T], v T) {
 		t.Errorf("failed to set %d in bitset=[%s]", v, strconv.FormatInt(int64(b.bits), 2))
 	}
 
-	b.Clear(v)
+	b.Unset(v)
 
 	if b.Has(v) {
 		t.Errorf("bit %d was not clear in bitset=[%s]", v, strconv.FormatInt(int64(b.bits), 2))

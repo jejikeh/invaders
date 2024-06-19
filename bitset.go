@@ -32,7 +32,7 @@ func (b *BitSet[T]) Has(v T) bool {
 	return b.bits&(1<<v) != 0
 }
 
-func (b *BitSet[T]) Clear(v T) {
+func (b *BitSet[T]) Unset(v T) {
 	checkBitOverflow[T](v)
 
 	b.bits &= ^(1 << v)
