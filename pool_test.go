@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestNewObjectInPool(t *testing.T) {
+func TestNewObjectInPool(t *testing.T) { // @Incomplete.
 	t.Parallel()
 
 	pool := NewTypedPool[int](1024)
@@ -12,6 +12,10 @@ func TestNewObjectInPool(t *testing.T) {
 
 	if x == nil {
 		t.Errorf("failed to allocate new object in pool")
+	}
+
+	if pool.Length() != 1 {
+		t.Errorf("pool length expected to be %d, but got %d", 1, pool.Length())
 	}
 }
 
@@ -54,6 +58,10 @@ func TestGetObjectFromPool(t *testing.T) {
 		t.Error("failed to get object from pool by index")
 	} else if *xFromPool != 234 {
 		t.Errorf("expected %d but got %d", 234, *xFromPool)
+	}
+
+	if pool.Length() != 2 {
+		t.Errorf("pool length expected to be %d, but got %d", 2, pool.Length())
 	}
 }
 

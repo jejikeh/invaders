@@ -40,14 +40,8 @@ func (p *Pool) GetAt(i int) (unsafe.Pointer, bool) {
 	return item, ok
 }
 
-type TypedPool[T any] struct {
-	*Pool
-}
-
-func NewTypedPool[T any](capacity int) *TypedPool[T] {
-	return &TypedPool[T]{
-		Pool: NewPool[T](capacity),
-	}
+func (p *Pool) Length() int {
+	return len(p.items)
 }
 
 func ToTypedPool[T any](pool *Pool) *TypedPool[T] {
@@ -57,6 +51,16 @@ func ToTypedPool[T any](pool *Pool) *TypedPool[T] {
 
 	return &TypedPool[T]{
 		Pool: pool,
+	}
+}
+
+type TypedPool[T any] struct {
+	*Pool
+}
+
+func NewTypedPool[T any](capacity int) *TypedPool[T] {
+	return &TypedPool[T]{
+		Pool: NewPool[T](capacity),
 	}
 }
 
