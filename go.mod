@@ -1,6 +1,6 @@
 module github.com/jejikeh/invaders
 
-go 1.21.0
+go 1.22.3
 
 require github.com/gen2brain/raylib-go/raylib v0.0.0-20231229134853-6f8b5ec24662
 

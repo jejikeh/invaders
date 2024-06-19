@@ -1,4 +1,4 @@
-package gomemory
+package gomem
 
 /*
 #cgo CFLAGS: -g -Wall
