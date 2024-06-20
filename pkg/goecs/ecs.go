@@ -1,14 +1,14 @@
-package ecs
+package goecs
 
 import (
 	"reflect"
 
-	"github.com/jejikeh/invaders/pkg/gomem"
+	"github.com/jejikeh/invaders/pkg/gomemory"
 )
 
 // @Incomplete: For now, there are no way to delete entities in the layer.
 // For deleting, it might be needed to implement some sort of free-list tracking
-// in arena allocators inside gomem.
+// in arena allocators inside gomemory.
 // @Incomplete: For now, there are no way to resize component and entity pool, so the
 
 // max count of components and entities are actually limited by bit size of ComponentID and EntityID
@@ -21,23 +21,28 @@ type EntityID int64
 
 type EntityInfo struct {
 	ID            EntityID
-	ComponentMask gomem.BitSet[ComponentID]
+	ComponentMask gomemory.BitSet[ComponentID]
 }
 
+type System = func(*Layer)
+
 type Layer struct {
-	componentPool []*gomem.Pool
+	componentPool []*gomemory.Pool
 	componentIDs  map[string]ComponentID
 
 	// @Incomplete: I use TypedPool here because in the future the entities can be removed, though it can be replaced by Arena in the future
-	entities *gomem.TypedPool[EntityInfo]
+	entities *gomemory.TypedPool[EntityInfo]
+	// @Incomplete: For now, systems cannot be removed or disabled at runtime
+	systems []System
 }
 
-func NewLayer() *Layer {
+func NewLayer(systems ...System) *Layer {
 	return &Layer{
 		// @Incomplete: We could store this data manually to give complete ownership of memory to Layer?
-		componentPool: make([]*gomem.Pool, gomem.Sizeof[ComponentID](ComponentID(0))),
-		componentIDs:  make(map[string]ComponentID, gomem.Sizeof[ComponentID](ComponentID(0))),
-		entities:      gomem.NewTypedPool[EntityInfo](MaxEntityCount),
+		componentPool: make([]*gomemory.Pool, gomemory.Sizeof[ComponentID](ComponentID(0))),
+		componentIDs:  make(map[string]ComponentID, gomemory.Sizeof[ComponentID](ComponentID(0))),
+		entities:      gomemory.NewTypedPool[EntityInfo](MaxEntityCount),
+		systems: 	   systems,
 	}
 }
 
@@ -59,7 +64,7 @@ func Attach[T any](layer *Layer, entityID EntityID) *T {
 	if layer.componentPool[componentID] == nil {
 		// @Cleanup: https://www.david-colson.com/2020/02/09/making-a-simple-ecs.html
 		// Potential improvements and alternatives
-		layer.componentPool[componentID] = gomem.NewPool[T](MaxEntityCount)
+		layer.componentPool[componentID] = gomemory.NewPool[T](MaxEntityCount)
 	}
 
 	componentPool := layer.componentPool[componentID]
@@ -125,12 +130,20 @@ func GetComponentID[T any](layer *Layer) ComponentID {
 	return layer.componentIDs[componentType]
 }
 
+func (l *Layer) Update() {
+	for _, system := range l.systems {
+		system(l)
+	}
+}
+
 // @Cleanup: When Go 1.23 comes out, rewrite this all to iterators.
 // @Incomplete: For now it is very stupid straightforward implementation.
+
+// @Incomplete: We could have some state in systems, for cache component IDs and etc.
 func (l *Layer) Request(components ...ComponentID) []EntityID {
 	var entities []EntityID
 
-	mask := gomem.NewBitSet[ComponentID](components...)
+	mask := gomemory.NewBitSet[ComponentID](components...)
 
 	for i := range l.entities.Length() {
 		if entity, ok := l.entities.GetAt(i); ok && entity.ComponentMask.Check(mask) {

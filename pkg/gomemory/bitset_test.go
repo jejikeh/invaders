@@ -1,4 +1,4 @@
-package gomem
+package gomemory
 
 import (
 	"math/rand/v2"

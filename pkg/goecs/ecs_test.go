@@ -1,4 +1,4 @@
-package ecs
+package goecs
 
 import (
 	"testing"
@@ -157,6 +157,33 @@ func TestRequestEntititesWith(t *testing.T) {
 
 	if enemies[0] != entity2 || enemies[1] != entity3 {
 		t.Fail()
+	}
+}
+
+func TestSystems(t *testing.T) {
+	t.Parallel()
+	
+	type Transform struct {
+		X, Y float64
+	}
+	
+	testSystem := func(l *Layer) {
+		entities := l.Request(GetComponentID[Transform](l))
+		for _, entity := range entities {
+			transform, _ := GetComponent[Transform](l, entity)
+			transform.X += 1
+		}
+	}
+	
+	layer := NewLayer(testSystem)
+	entity := layer.NewEntity()
+	entityTransform := Attach[Transform](layer, entity)
+	entityTransform.X = 100
+	
+	layer.Update()
+	
+	if entityTransform.X != 101 {
+		t.Error("system should update the component data")
 	}
 }
 

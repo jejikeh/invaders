@@ -1,4 +1,4 @@
-package gomem
+package gomemory
 
 import (
 	"bytes"
