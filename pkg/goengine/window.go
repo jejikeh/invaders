@@ -1,27 +1,35 @@
-package internal
+package goengine
 
 import (
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/jejikeh/invaders/pkg/gomath"
 )
 
-type EbitenWindow struct {
-	config WindowConfig
-	layout *gomath.Vec2
+type WindowConfig struct {
+	Title string
+	Size  *gomath.Vec2
+	Scale float64
 }
 
-func NewEbitenWindow(config *WindowConfig) (*EbitenWindow, error) {
+type EbitenWindow struct {
+	config  WindowConfig
+	layout  *gomath.Vec2
+	handler *Engine
+}
+
+func NewEbitenWindow(config *WindowConfig, engine *Engine) (*EbitenWindow, error) {
 	window := &EbitenWindow{
-		config: *config,
+		config:  *config,
+		handler: engine,
 	}
 
 	window.UpdateConfig(&window.config)
 
-	return window, window.open()
+	return window, nil
 }
 
-func (e *EbitenWindow) open() error {	
+// @Cleanup.
+func (e *EbitenWindow) Open() error {
 	return ebiten.RunGame(e)
 }
 
@@ -29,19 +37,19 @@ func (e *EbitenWindow) UpdateConfig(newConfig *WindowConfig) {
 	if &e.config != newConfig {
 		e.config = *newConfig
 	}
-	
+
 	e.layout = e.config.Size.DivFloat(e.config.Scale)
-	
+
 	ebiten.SetWindowSize(int(e.config.Size.X), int(e.config.Size.Y))
 	ebiten.SetWindowTitle(e.config.Title)
 }
 
 func (e *EbitenWindow) Update() error {
-	return nil
+	return e.handler.Update()
 }
 
 func (e *EbitenWindow) Draw(screen *ebiten.Image) {
-	ebitenutil.DebugPrint(screen, "Hello, World!")
+	e.handler.Draw(screen)
 }
 
 func (e *EbitenWindow) Layout(outsideWidth, outsideHeight int) (int, int) {

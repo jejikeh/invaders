@@ -92,3 +92,7 @@ func TestToTypedPool(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestPoolGC(t *testing.T) {
+	
+}

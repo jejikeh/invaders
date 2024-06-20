@@ -42,7 +42,7 @@ func NewLayer(systems ...System) *Layer {
 		componentPool: make([]*gomemory.Pool, gomemory.Sizeof[ComponentID](ComponentID(0))),
 		componentIDs:  make(map[string]ComponentID, gomemory.Sizeof[ComponentID](ComponentID(0))),
 		entities:      gomemory.NewTypedPool[EntityInfo](MaxEntityCount),
-		systems: 	   systems,
+		systems:       systems,
 	}
 }
 
@@ -52,6 +52,10 @@ func (l *Layer) NewEntity() EntityID {
 	entity.ID = EntityID(id)
 
 	return EntityID(id)
+}
+
+func (l *Layer) AddSystems(systems ...System) {
+	l.systems = append(l.systems, systems...)
 }
 
 func Attach[T any](layer *Layer, entityID EntityID) *T {
