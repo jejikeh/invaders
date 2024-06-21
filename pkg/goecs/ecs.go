@@ -4,6 +4,7 @@ import (
 	"reflect"
 
 	"github.com/jejikeh/invaders/pkg/gomemory"
+	"github.com/jejikeh/invaders/pkg/gomemory/arena"
 )
 
 // @Incomplete: For now, there are no way to delete entities in the layer.
@@ -27,7 +28,7 @@ type EntityInfo struct {
 type System = func(*Layer)
 
 type Layer struct {
-	componentPool []*gomemory.Pool
+	componentPool []*arena.MemoryBuffer[any]
 	componentIDs  map[string]ComponentID
 
 	// @Incomplete: I use TypedPool here because in the future the entities can be removed, though it can be replaced by Arena in the future
@@ -39,7 +40,7 @@ type Layer struct {
 func NewLayer(systems ...System) *Layer {
 	return &Layer{
 		// @Incomplete: We could store this data manually to give complete ownership of memory to Layer?
-		componentPool: make([]*gomemory.Pool, gomemory.Sizeof[ComponentID](ComponentID(0))),
+		componentPool: make([]*arena.MemoryBuffer[any], gomemory.Sizeof[ComponentID](ComponentID(0))),
 		componentIDs:  make(map[string]ComponentID, gomemory.Sizeof[ComponentID](ComponentID(0))),
 		entities:      gomemory.NewTypedPool[EntityInfo](MaxEntityCount),
 		systems:       systems,
@@ -68,15 +69,15 @@ func Attach[T any](layer *Layer, entityID EntityID) *T {
 	if layer.componentPool[componentID] == nil {
 		// @Cleanup: https://www.david-colson.com/2020/02/09/making-a-simple-ecs.html
 		// Potential improvements and alternatives
-		layer.componentPool[componentID] = gomemory.NewPool[T](MaxEntityCount)
+		layer.componentPool[componentID] = arena.NewMemoryBufferAny(*new(T), MaxEntityCount)
 	}
 
 	componentPool := layer.componentPool[componentID]
-	component := (*T)(componentPool.NewAt(int(entityID)))
+	component, _ := componentPool.New()
 
 	entity.ComponentMask.Set(componentID)
 
-	return component
+	return (*component).(*T)
 }
 
 // @Cleanup: In componentPools the are still allocated memory for this entityID.
@@ -103,12 +104,9 @@ func GetComponent[T any](layer *Layer, entityID EntityID) (*T, bool) {
 
 	componentPool := layer.componentPool[componentID]
 
-	memPtr, ok := componentPool.GetAt(int(entityID))
-	if !ok {
-		return nil, false
-	}
+	memPtr := componentPool.At(int(entityID))
 
-	return (*T)(memPtr), true
+	return (*memPtr).(*T), true
 }
 
 func HasComponent[T any](layer *Layer, entityID EntityID) bool {

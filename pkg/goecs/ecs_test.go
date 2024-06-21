@@ -105,9 +105,13 @@ func TestRequestEntititesWith(t *testing.T) {
 		X, Y, Z float64
 	}
 
-	type PlayerTag struct{}
+	type PlayerTag struct {
+		_ int
+	}
 
-	type EnemyTag struct{}
+	type EnemyTag struct {
+		_ int
+	}
 
 	layer := NewLayer()
 

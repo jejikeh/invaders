@@ -3,21 +3,19 @@ package gomemory
 import (
 	"errors"
 	"unsafe"
+
+	"github.com/jejikeh/invaders/pkg/gomath"
 )
 
 const bitsInByte = 4
 
 var ErrBitSetOverflow = errors.New("bitset overflow")
 
-type Int interface {
-	~int | ~uint | ~int8 | ~uint8 | ~int16 | ~uint16 | ~int32 | ~uint32 | ~int64 | ~uint64
-}
-
-type BitSet[T Int] struct {
+type BitSet[T gomath.Int] struct {
 	bits T
 }
 
-func NewBitSet[T Int](values ...T) *BitSet[T] {
+func NewBitSet[T gomath.Int](values ...T) *BitSet[T] {
 	bitset := &BitSet[T]{}
 
 	for _, value := range values {
@@ -48,11 +46,11 @@ func (b *BitSet[T]) Unset(v T) {
 	b.bits &= ^(1 << v)
 }
 
-func Sizeof[T Int](v T) int {
+func Sizeof[T gomath.Int](v T) int {
 	return int(unsafe.Sizeof(v)) * bitsInByte
 }
 
-func checkBitOverflow[T Int](v T) {
+func checkBitOverflow[T gomath.Int](v T) {
 	if unsafe.Sizeof(v)*4 < uintptr(v) {
 		panic(ErrBitSetOverflow)
 	}

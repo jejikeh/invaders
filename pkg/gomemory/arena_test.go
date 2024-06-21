@@ -3,6 +3,7 @@ package gomemory
 import (
 	"bytes"
 	"encoding/binary"
+	"runtime"
 	"testing"
 	"unsafe"
 )
@@ -175,13 +176,14 @@ func TestNewStructPointer(t *testing.T) { // @Incomplete: Useless.
 	type A struct {
 		aa bool
 		ab int32
+		ac []*A
 	}
 
 	type B struct {
 		ba *A
 	}
 
-	arena := NewMallocArena(SizeOfAligned[B](2))
+	arena := NewMallocArena(SizeOfAligned[B](2) + SizeOfAligned[A](2))
 	defer arena.Free()
 
 	b := New[B](arena)
@@ -192,8 +194,21 @@ func TestNewStructPointer(t *testing.T) { // @Incomplete: Useless.
 	b.ba = New[A](arena)
 	b.ba.aa = true
 	b.ba.ab = 1
+	b.ba.ac = make([]*A, 2)
+	b.ba.ac[0] = &A{ab: 12}
+	b.ba.ac[1] = &A{ab: 13}
 
 	if b.ba.aa != true || b.ba.ab != 1 {
+		t.Fail()
+	}
+
+	runtime.GC()
+
+	if len(b.ba.ac) != 2 {
+		t.Fail()
+	}
+
+	if b.ba.ac[0].ab != 12 || b.ba.ac[1].ab != 13 {
 		t.Fail()
 	}
 }
@@ -221,6 +236,64 @@ func TestNewStructEmbeding(t *testing.T) { // @Incomplete: Useless.
 		t.Fail()
 	}
 }
+
+// func TestPointerOutsideArena(t *testing.T) {
+// 	t.Parallel()
+
+// 	type B struct {
+// 		A int
+// 	}
+
+// 	type C struct {
+// 		A int
+// 		B []*B
+// 	}
+
+// 	type Test struct {
+// 		A int
+// 		B int
+// 		C *C
+// 	}
+
+// 	arena := NewMallocArena(SizeOfAligned[Test](10))
+// 	// test := New[Test](arena)
+// 	test := New[Test](arena)
+// 	test.A = 1
+// 	test.B = 2
+// 	test.C = &C{
+// 		A: 3,
+// 		B: []*B{{A: 4}, {A: 5}},
+// 	}
+
+// 	// b := &test.C.B
+
+// 	// test := &Test{A: 1, B: 2, C: &C{A: 3, B: []*B{{A: 4}, {A: 5}}}}
+
+// 	ptr := unsafe.Pointer(test)
+
+// 	runtime.GC()
+
+// 	testCB1 := *(**C)(unsafe.Add(ptr, unsafe.Offsetof(test.C)))
+// 	if testCB1.A != 3 {
+// 		t.Error("testCB1.A != 3")
+// 	}
+
+// 	if len(testCB1.B) != 2 {
+// 		t.Error("testCB1.B != b")
+// 	}
+
+// 	// if &testCB1.B != b {
+// 	// t.Error("testCB1.B != b")
+// 	// }
+
+// 	if testCB1.B[0].A != 4 {
+// 		t.Error("testCB1.B[0].A != 4")
+// 	}
+
+// 	if testCB1.B[1].A != 5 {
+// 		t.Error("testCB1.B[1].A != 5")
+// 	}
+// }
 
 // @Incomplete: Add tests with different allocating object with different types
 

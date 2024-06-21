@@ -26,6 +26,7 @@ var (
 
 type Arena interface {
 	Alloc(size uintptr, align uintptr) unsafe.Pointer
+	Free()
 }
 
 func New[T any](arena Arena) *T {
@@ -52,7 +53,6 @@ func NewMallocArena(size int) *MallocArena {
 	}
 
 	runtime.SetFinalizer(m, func(m *MallocArena) {
-		fmt.Println("Finalizing arena")
 		C.free(m.start)
 	})
 

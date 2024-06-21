@@ -4,6 +4,8 @@ import (
 	"math/rand/v2"
 	"strconv"
 	"testing"
+
+	"github.com/jejikeh/invaders/pkg/gomath"
 )
 
 // @Cleanup: Refactor these tests.
@@ -65,7 +67,7 @@ func TestComposeNewBitSet(t *testing.T) {
 	}
 }
 
-func testSetBit[T Int](t *testing.T, b *BitSet[T], v T) {
+func testSetBit[T gomath.Int](t *testing.T, b *BitSet[T], v T) {
 	t.Helper()
 	b.Set(v)
 
@@ -74,7 +76,7 @@ func testSetBit[T Int](t *testing.T, b *BitSet[T], v T) {
 	}
 }
 
-func testClearBit[T Int](t *testing.T, b *BitSet[T], v T) {
+func testClearBit[T gomath.Int](t *testing.T, b *BitSet[T], v T) {
 	t.Helper()
 
 	if !b.Has(v) {

@@ -5,8 +5,7 @@ import (
 	"runtime"
 	"unsafe"
 
-	"github.com/jejikeh/invaders/pkg/gomemory"
-	"github.com/ortuman/nuke"
+	"github.com/jejikeh/invaders/pkg/gomemory/arena"
 )
 
 type B struct {
@@ -34,7 +33,7 @@ func fibonacci() func() int {
 }
 
 func main() {
-	arena()
+	arena1()
 
 	f := fibonacci()
 	for i := 0; i < 10; i++ {
@@ -42,14 +41,19 @@ func main() {
 	}
 }
 
-func arena() {
-	arena := nuke.NewMonotonicArena(256*1024, 80)
+func arena1() {
+	// arena := nuke.NewMonotonicArena(256*1024, 80)
 
 	// Allocate a new object of type Foo.
 	// fooRef := nuke.New[Foo](arena)
-	// arena := gomemory.NewMallocArena(gomemory.SizeOfAligned[Test](10))
+	arena := arena.NewMemoryBuffer[Test](1)
 	// test := gomemory.New[Test](arena)
-	test := gomemory.New[Test](arena)
+	mem, err := arena.New()
+	if err != nil {
+		panic(err)
+	}
+
+	test := mem
 	test.A = 1
 	test.B = 2
 	test.C = &C{
