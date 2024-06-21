@@ -1,12 +1,34 @@
 package main
 
 import (
+	"runtime"
+	"flag"
+	"os"
+	"runtime/pprof"
+	"log"
+
 	"github.com/jejikeh/invaders/pkg/goecs"
 	"github.com/jejikeh/invaders/pkg/goengine"
 	"github.com/jejikeh/invaders/pkg/gomath"
 )
 
+var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
+var memprofile = flag.String("memprofile", "", "write memory profile to `file`")
+
 func main() {
+	flag.Parse()
+    if *cpuprofile != "" {
+        f, err := os.Create(*cpuprofile)
+        if err != nil {
+            log.Fatal("could not create CPU profile: ", err)
+        }
+        defer f.Close() // error handling omitted for example
+        if err := pprof.StartCPUProfile(f); err != nil {
+            log.Fatal("could not start CPU profile: ", err)
+        }
+        defer pprof.StopCPUProfile()
+    }
+    
 	engine, err := goengine.NewEngine(&goengine.Config{
 		Window: &goengine.WindowConfig{
 			Title: "Invaders",
@@ -21,23 +43,44 @@ func main() {
 
 	engine.ECS.AddSystems(movePlayer)
 
-	NewPlayer(engine)
-
-	engine.Run()
-}
-
-type PlayerTag struct{}
-
-func NewPlayer(engine *goengine.Engine) goecs.EntityID {
 	player := engine.ECS.NewEntity()
-	goecs.Attach[goengine.Transfrom](engine.ECS, player)
+	t := goecs.Attach[goengine.Transfrom](engine.ECS, player)
+	t.Position.X = 100
+	t.Position.Y = 100
+	t.Scale.X = 1
+	t.Scale.Y = 1
 
 	sprite := goecs.Attach[goengine.EbitenSprite](engine.ECS, player)
 	sprite.Path = "/Volumes/Dev/Projects/invaders/resources/player.png"
 
 	goecs.Attach[PlayerTag](engine.ECS, player)
 
-	return player
+	// runtime.SetFinalizer(sprite, func(sprite *goengine.EbitenSprite) {
+	// 	runtime.KeepAlive(sprite)
+	// 	runtime.KeepAlive(sprite.Image)
+	// })
+
+	engine.Run()
+
+	if *memprofile != "" {
+        f, err := os.Create(*memprofile)
+        if err != nil {
+            log.Fatal("could not create memory profile: ", err)
+        }
+        defer f.Close() // error handling omitted for example
+        runtime.GC() // get up-to-date statistics
+        if err := pprof.WriteHeapProfile(f); err != nil {
+            log.Fatal("could not write memory profile: ", err)
+        }
+    }
+}
+
+type PlayerTag struct{}
+
+func NewPlayer(engine *goengine.Engine) goecs.EntityID {
+	runtime.KeepAlive(engine)
+
+	return goecs.EntityID(1)
 }
 
 func movePlayer(layer *goecs.Layer) {

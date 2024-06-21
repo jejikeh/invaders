@@ -1,6 +1,7 @@
 package gomemory
 
 import (
+	"runtime"
 	"testing"
 )
 
@@ -93,6 +94,44 @@ func TestToTypedPool(t *testing.T) {
 	}
 }
 
+type Sprite struct {
+	Path string
+}
+
+type Transform struct {
+	X, Y   float32
+	Sprite *Sprite
+}
+
 func TestPoolGC(t *testing.T) {
-	
+	t.Parallel()
+
+	pool := NewPool[Transform](2)
+	allocateObject(pool)
+
+	runtime.GC()
+
+	testGetAllocatedObject(t, pool)
+}
+
+func allocateObject(pool *Pool) {
+	t1 := (*Transform)(pool.NewAt(1))
+	t1.Sprite = &Sprite{
+		Path: "sprite",
+	}
+}
+
+func testGetAllocatedObject(t *testing.T, pool *Pool) {
+	t.Helper()
+
+	buf, _ := pool.GetAt(1)
+	t1 := (*Transform)(buf)
+
+	if t1.Sprite == nil {
+		t.Fail()
+	}
+
+	if t1.Sprite.Path != "sprite" {
+		t.Fail()
+	}
 }

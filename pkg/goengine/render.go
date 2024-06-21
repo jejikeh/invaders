@@ -42,7 +42,7 @@ func drawEbitenSprites(screen *ebiten.Image, layer *goecs.Layer) {
 		}
 
 		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(float64(transform.Position.X), float64(transform.Position.Y))
+		op.GeoM.Translate(transform.Position.X, transform.Position.Y)
 		op.GeoM.Scale(transform.Scale.X, transform.Scale.Y)
 		op.GeoM.Rotate(transform.Rotation)
 

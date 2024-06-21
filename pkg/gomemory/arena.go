@@ -26,7 +26,6 @@ var (
 
 type Arena interface {
 	Alloc(size uintptr, align uintptr) unsafe.Pointer
-	Free()
 }
 
 func New[T any](arena Arena) *T {
@@ -53,6 +52,7 @@ func NewMallocArena(size int) *MallocArena {
 	}
 
 	runtime.SetFinalizer(m, func(m *MallocArena) {
+		fmt.Println("Finalizing arena")
 		C.free(m.start)
 	})
 
@@ -65,11 +65,10 @@ func (b *MallocArena) Alloc(size uintptr, align uintptr) unsafe.Pointer {
 		panic(ErrAlignmentIsNotPowerOfTwo)
 	}
 
-	newCursorPos := (uintptr(b.cursor) - size) & ^(align - 1)
-	if newCursorPos < uintptr(b.start) {
+	b.cursor = unsafe.Pointer((uintptr(b.cursor) - size) &^ (align - 1))
+	if uintptr(b.cursor) < uintptr(b.start) {
 		panic(ErrArenaOverflow)
 	}
-	b.cursor = unsafe.Pointer(newCursorPos)
 
 	return b.cursor
 }
@@ -88,7 +87,7 @@ func SizeOfAligned[T any](count int) int {
 	align := int(unsafe.Alignof(t))
 	alignedSize := size
 	for range count {
-		aligned := (alignedSize + align - 1) & ^(align - 1)
+		aligned := (alignedSize + align - 1) &^ (align - 1)
 		alignedSize = aligned + size
 	}
 

@@ -162,11 +162,11 @@ func TestRequestEntititesWith(t *testing.T) {
 
 func TestSystems(t *testing.T) {
 	t.Parallel()
-	
+
 	type Transform struct {
 		X, Y float64
 	}
-	
+
 	testSystem := func(l *Layer) {
 		entities := l.Request(GetComponentID[Transform](l))
 		for _, entity := range entities {
@@ -174,14 +174,14 @@ func TestSystems(t *testing.T) {
 			transform.X += 1
 		}
 	}
-	
+
 	layer := NewLayer(testSystem)
 	entity := layer.NewEntity()
 	entityTransform := Attach[Transform](layer, entity)
 	entityTransform.X = 100
-	
+
 	layer.Update()
-	
+
 	if entityTransform.X != 101 {
 		t.Error("system should update the component data")
 	}
