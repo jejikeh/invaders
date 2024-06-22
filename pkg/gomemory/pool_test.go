@@ -8,8 +8,8 @@ import (
 func TestNewObjectInPool(t *testing.T) { // @Incomplete.
 	t.Parallel()
 
-	pool := NewTypedPool[int](1024)
-	x := pool.NewAt(0)
+	pool := NewPool[int](1024)
+	x := pool.StoreAt(0)
 
 	if x == nil {
 		t.Errorf("failed to allocate new object in pool")
@@ -24,11 +24,11 @@ func TestNewObjectInPool(t *testing.T) { // @Incomplete.
 func TestGetObjectFromPool(t *testing.T) {
 	t.Parallel()
 
-	pool := NewTypedPool[int](1024)
-	x := pool.NewAt(0)
+	pool := NewPool[int](1024)
+	x := pool.StoreAt(0)
 	*x = 123
 
-	xFromPool, _ := pool.GetAt(0)
+	xFromPool, _ := pool.LoadAt(0)
 	if xFromPool == nil {
 		t.Error("failed to get object from pool by index")
 	} else if *xFromPool != 123 {
@@ -37,24 +37,24 @@ func TestGetObjectFromPool(t *testing.T) {
 
 	*x = 234
 
-	xFromPool, _ = pool.GetAt(0)
+	xFromPool, _ = pool.LoadAt(0)
 	if xFromPool == nil {
 		t.Error("failed to get object from pool by index")
 	} else if *xFromPool != 234 {
 		t.Errorf("expected %d but got %d", 234, *xFromPool)
 	}
 
-	y := pool.NewAt(1)
+	y := pool.StoreAt(1)
 	*y = 102
 
-	yFromPool, _ := pool.GetAt(1)
+	yFromPool, _ := pool.LoadAt(1)
 	if yFromPool == nil {
 		t.Error("failed to get object from pool by index")
 	} else if *yFromPool != 102 {
 		t.Errorf("expected %d but got %d", 102, *yFromPool)
 	}
 
-	xFromPool, _ = pool.GetAt(0)
+	xFromPool, _ = pool.LoadAt(0)
 	if xFromPool == nil {
 		t.Error("failed to get object from pool by index")
 	} else if *xFromPool != 234 {
@@ -70,27 +70,16 @@ func TestPool(t *testing.T) {
 	t.Parallel()
 
 	untypedPool := NewPool[int](16)
-	x := (*int)(untypedPool.NewAt(1))
+	x := (*int)(untypedPool.StoreAt(1))
 	*x = 123
 
-	ptr, _ := untypedPool.GetAt(1)
+	ptr, _ := untypedPool.LoadAt(1)
 
 	xFromPool := (*int)(ptr)
 	if xFromPool == nil {
 		t.Error("failed to get object from pool by index")
 	} else if *xFromPool != 123 {
 		t.Errorf("expected %d but got %d", 123, *xFromPool)
-	}
-}
-
-func TestToTypedPool(t *testing.T) {
-	t.Parallel()
-
-	untypedPool := NewPool[int](16)
-	typedPool := ToTypedPool[int](untypedPool)
-
-	if typedPool == nil {
-		t.Fail()
 	}
 }
 
@@ -114,19 +103,17 @@ func TestPoolGC(t *testing.T) {
 	testGetAllocatedObject(t, pool)
 }
 
-func allocateObject(pool *Pool) {
-	t1 := (*Transform)(pool.NewAt(1))
+func allocateObject(pool *Pool[Transform]) {
+	t1 := pool.StoreAt(1)
 	t1.Sprite = &Sprite{
 		Path: "sprite",
 	}
 }
 
-func testGetAllocatedObject(t *testing.T, pool *Pool) {
+func testGetAllocatedObject(t *testing.T, pool *Pool[Transform]) {
 	t.Helper()
 
-	buf, _ := pool.GetAt(1)
-	t1 := (*Transform)(buf)
-
+	t1, _ := pool.LoadAt(1)
 	if t1.Sprite == nil {
 		t.Fail()
 	}

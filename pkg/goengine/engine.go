@@ -3,6 +3,7 @@ package goengine
 import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/jejikeh/invaders/pkg/goecs"
+	"github.com/jejikeh/invaders/pkg/gomemory"
 )
 
 type Config struct {
@@ -13,11 +14,14 @@ type Engine struct {
 	config Config
 	window *EbitenWindow
 	ECS    *goecs.Layer
+
+	spriteBuf *gomemory.Pool[ebiten.Image]
 }
 
 func NewEngine(c *Config) (*Engine, error) {
 	engine := &Engine{
-		config: *c,
+		config:    *c,
+		spriteBuf: gomemory.NewPool[ebiten.Image](1024),
 	}
 
 	var err error
@@ -50,5 +54,5 @@ func (e *Engine) Update() error {
 
 // @Incomplete: Abstract away ebiten in engine layer
 func (e *Engine) Draw(screen *ebiten.Image) {
-	drawEbitenSprites(screen, e.ECS)
+	drawEbitenSprites(e, screen, e.ECS)
 }

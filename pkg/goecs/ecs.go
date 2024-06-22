@@ -4,7 +4,6 @@ import (
 	"reflect"
 
 	"github.com/jejikeh/invaders/pkg/gomemory"
-	"github.com/jejikeh/invaders/pkg/gomemory/arena"
 )
 
 // @Incomplete: For now, there are no way to delete entities in the layer.
@@ -28,11 +27,11 @@ type EntityInfo struct {
 type System = func(*Layer)
 
 type Layer struct {
-	componentPool []*arena.MemoryBuffer[any]
+	componentPool []*gomemory.Pool[any]
 	componentIDs  map[string]ComponentID
 
 	// @Incomplete: I use TypedPool here because in the future the entities can be removed, though it can be replaced by Arena in the future
-	entities *gomemory.TypedPool[EntityInfo]
+	entities *gomemory.Pool[EntityInfo]
 	// @Incomplete: For now, systems cannot be removed or disabled at runtime
 	systems []System
 }
@@ -40,16 +39,16 @@ type Layer struct {
 func NewLayer(systems ...System) *Layer {
 	return &Layer{
 		// @Incomplete: We could store this data manually to give complete ownership of memory to Layer?
-		componentPool: make([]*arena.MemoryBuffer[any], gomemory.Sizeof[ComponentID](ComponentID(0))),
-		componentIDs:  make(map[string]ComponentID, gomemory.Sizeof[ComponentID](ComponentID(0))),
-		entities:      gomemory.NewTypedPool[EntityInfo](MaxEntityCount),
+		componentPool: make([]*gomemory.Pool[any], gomemory.Sizeof(ComponentID(0))),
+		componentIDs:  make(map[string]ComponentID, gomemory.Sizeof(ComponentID(0))),
+		entities:      gomemory.NewPool[EntityInfo](MaxEntityCount),
 		systems:       systems,
 	}
 }
 
 func (l *Layer) NewEntity() EntityID {
 	id := l.entities.Length()
-	entity := l.entities.NewAt(id)
+	entity := l.entities.StoreAt(id)
 	entity.ID = EntityID(id)
 
 	return EntityID(id)
@@ -60,7 +59,7 @@ func (l *Layer) AddSystems(systems ...System) {
 }
 
 func Attach[T any](layer *Layer, entityID EntityID) *T {
-	entity, ok := layer.entities.GetAt(int(entityID))
+	entity, ok := layer.entities.LoadAt(int(entityID))
 	if !ok {
 		return nil
 	}
@@ -69,11 +68,13 @@ func Attach[T any](layer *Layer, entityID EntityID) *T {
 	if layer.componentPool[componentID] == nil {
 		// @Cleanup: https://www.david-colson.com/2020/02/09/making-a-simple-ecs.html
 		// Potential improvements and alternatives
-		layer.componentPool[componentID] = arena.NewMemoryBufferAny(*new(T), MaxEntityCount)
+		layer.componentPool[componentID] = gomemory.NewPool[any](MaxEntityCount, new(T))
 	}
 
 	componentPool := layer.componentPool[componentID]
-	component, _ := componentPool.New()
+	component := componentPool.StoreAt(int(entityID), func(a *any) {
+		*a = new(T)
+	})
 
 	entity.ComponentMask.Set(componentID)
 
@@ -82,7 +83,7 @@ func Attach[T any](layer *Layer, entityID EntityID) *T {
 
 // @Cleanup: In componentPools the are still allocated memory for this entityID.
 func Detach[T any](layer *Layer, entityID EntityID) {
-	entity, ok := layer.entities.GetAt(int(entityID))
+	entity, ok := layer.entities.LoadAt(int(entityID))
 	if !ok {
 		return
 	}
@@ -92,7 +93,7 @@ func Detach[T any](layer *Layer, entityID EntityID) {
 }
 
 func GetComponent[T any](layer *Layer, entityID EntityID) (*T, bool) {
-	entity, entityExists := layer.entities.GetAt(int(entityID))
+	entity, entityExists := layer.entities.LoadAt(int(entityID))
 	if !entityExists {
 		return nil, false
 	}
@@ -104,13 +105,13 @@ func GetComponent[T any](layer *Layer, entityID EntityID) (*T, bool) {
 
 	componentPool := layer.componentPool[componentID]
 
-	memPtr := componentPool.At(int(entityID))
+	memPtr, _ := componentPool.LoadAt(int(entityID))
 
 	return (*memPtr).(*T), true
 }
 
 func HasComponent[T any](layer *Layer, entityID EntityID) bool {
-	entity, entityExists := layer.entities.GetAt(int(entityID))
+	entity, entityExists := layer.entities.LoadAt(int(entityID))
 	if !entityExists {
 		return false
 	}
@@ -148,7 +149,7 @@ func (l *Layer) Request(components ...ComponentID) []EntityID {
 	mask := gomemory.NewBitSet[ComponentID](components...)
 
 	for i := range l.entities.Length() {
-		if entity, ok := l.entities.GetAt(i); ok && entity.ComponentMask.Check(mask) {
+		if entity, ok := l.entities.LoadAt(i); ok && entity.ComponentMask.Check(mask) {
 			entities = append(entities, entity.ID)
 		}
 	}

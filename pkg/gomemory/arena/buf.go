@@ -2,85 +2,116 @@ package arena
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"reflect"
 	"unsafe"
 )
 
-var ErrAlignmentIsNotPowerOfTwo = errors.New("alignment is not power of two")
-var ErrBufferOverflow = errors.New("buffer overflow")
+var ErrBufOverflow = errors.New("buffer overflow")
 
-type MemoryBuffer[T any] struct {
-	buffer  []byte
-	objects []*T
-	cursor  unsafe.Pointer
-	end     unsafe.Pointer
-	start   unsafe.Pointer
-	tAlign  uintptr
-	tSize   uintptr
+type BufItem[T any] struct {
+	value *T
 }
 
-func NewMemoryBufferAny(t any, count int) *MemoryBuffer[any] {
-	return newMemoryBuffer(t, count)
+func (w *BufItem[T]) get() *T {
+	return w.value
 }
 
-func NewMemoryBuffer[T any](count int) *MemoryBuffer[T] {
-	return newMemoryBuffer(*new(T), count)
+type Buf[T any] struct {
+	// buffer     []byte
+	// byteOffset int
+	ptr    unsafe.Pointer
+	cursor unsafe.Pointer
+
+	typeSize  uintptr
+	typeAlign uintptr
+
+	refs   []BufItem[T]
+	length int
 }
 
-func newMemoryBuffer[T any](t T, count int) *MemoryBuffer[T] {
-	b := &MemoryBuffer[T]{}
-
-	b.buffer = make([]byte, SizeOfAligned[T](count))
-	b.objects = make([]*T, 0)
-	b.start = unsafe.Pointer(&b.buffer[0])
-	b.end = unsafe.Pointer(&b.buffer[len(b.buffer)-1])
-	b.cursor = b.end
-	b.tAlign = unsafe.Alignof(t)
-	b.tSize = unsafe.Sizeof(t)
-
-	return b
-}
-
-func (b *MemoryBuffer[T]) New() (*T, error) {
-	b.cursor = unsafe.Pointer((uintptr(b.cursor) - b.tSize) &^ (b.tAlign - 1))
-	// b.cursor = unsafe.Pointer((uintptr(b.cursor) - size))
-
-	if uintptr(b.cursor) < uintptr(b.start) {
-		return nil, ErrBufferOverflow
+func NewBuf[T any](count int, ts ...T) *Buf[T] {
+	var t T
+	if len(ts) > 0 {
+		t = ts[0]
+	} else {
+		t = *new(T)
 	}
 
-	t := (*T)(b.cursor)
-	b.objects = append(b.objects, t)
+	buffer := make([]byte, int(alignedSizeof(t))*count)
+	ptr := unsafe.Pointer(unsafe.SliceData(buffer))
 
-	return t, nil
+	return &Buf[T]{
+		refs:   make([]BufItem[T], count),
+		ptr:    ptr,
+		cursor: ptr,
+		// buffer: buffer,
+		// byteOffset: (int(alignedSizeof(t)) * count) - 1,
+		// byteOffset: 0,
+		// @Incomplete: This leads to wrong pointer calculations...
+		// Maybe GC moves buffer, and cursor dosen't get updated?
+		// cursor:    unsafe.Add(unsafe.Pointer(&buffer[0]), unsafe.Sizeof(t)*uintptr(count)),
+		typeSize:  indirectSizeof(t),
+		typeAlign: unsafe.Alignof(t),
+	}
 }
 
-func (b *MemoryBuffer[T]) At(i int) *T {
-	return b.objects[i]
-}
+func (b *Buf[T]) Store(construct ...func(*T)) *T {
+	// start := uintptr(unsafe.Pointer(&b.buffer[b.byteOffset]))
+	// @Cleanup: The alignment is still not right.
+	// cursor := unsafe.Pointer((uintptr(unsafe.Pointer(&b.buffer[b.byteOffset])) - b.typeSize) &^ (b.typeAlign - 1))
+	// cursor := unsafe.Pointer(&b.buffer[b.byteOffset])
+	// if b.byteOffset < 0 {
+	// panic(ErrBufOverflow)
+	// }
 
-func (b *MemoryBuffer[T]) Dump(w io.Writer) (int, error) {
-	return w.Write(unsafe.Slice((*byte)(b.cursor), b.size()))
-}
+	// b.byteOffset -= int(start - uintptr(cursor))
+	// @Incomplete: Fix alignment, reverse allocations.
+	// ptr := unsafe.Pointer(&b.buffer[b.byteOffset])
+	// cursor := unsafe.Pointer((uintptr(ptr)))
 
-func (b *MemoryBuffer[T]) size() uintptr {
-	return uintptr(b.end) - uintptr(b.cursor)
-}
+	// b.byteOffset += int(b.typeSize)
 
-func SizeOfAligned[T any](count int) int {
-	t := new(T)
-	size := int(indirectSize(t))
-	align := int(unsafe.Alignof(t))
-	alignedSize := size
-	for range count {
-		aligned := (alignedSize + align - 1) &^ (align - 1)
-		alignedSize = aligned + size
+	buf := unsafe.Slice((*byte)(b.cursor), b.typeSize)
+	for i := range buf {
+		buf[i] = 0
 	}
 
-	return alignedSize
+	b.refs[b.length] = BufItem[T]{
+		value: (*T)(b.cursor),
+	}
+	b.length++
+	b.cursor = unsafe.Add(b.cursor, b.typeSize)
+
+	for _, c := range construct {
+		c(b.refs[b.length-1].get())
+	}
+
+	return b.refs[b.length-1].get()
 }
 
-func indirectSize[T any](t T) uintptr {
+func (b *Buf[T]) Load(idx int) *T {
+	return b.refs[idx].get()
+}
+
+func (b *Buf[T]) Length() int {
+	return b.length
+}
+
+func (b *Buf[T]) write(w io.Writer) (int, error) {
+	n, err := w.Write(unsafe.Slice((*byte)(b.ptr), int(b.typeSize)*b.length))
+	if err != nil {
+		return n, fmt.Errorf("failed to write buffer to writed: %w", err)
+	}
+
+	return n, nil
+}
+
+func indirectSizeof(t any) uintptr {
 	return reflect.Indirect(reflect.ValueOf(t)).Type().Size()
+}
+
+func alignedSizeof(t any) uintptr {
+	return (indirectSizeof(t) + unsafe.Alignof(t)) &^ (unsafe.Alignof(t) - 1)
 }

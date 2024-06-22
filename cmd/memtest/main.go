@@ -34,8 +34,20 @@ func fibonacci() func() int {
 
 func main() {
 	arena1()
-
 	f := fibonacci()
+	for i := 0; i < 10; i++ {
+		fmt.Print(f())
+	}
+	arena1()
+	for i := 0; i < 10; i++ {
+		fmt.Print(f())
+	}
+	arena1()
+	for i := 0; i < 10; i++ {
+		fmt.Print(f())
+	}
+	arena1()
+
 	for i := 0; i < 10; i++ {
 		fmt.Print(f())
 	}
@@ -46,20 +58,16 @@ func arena1() {
 
 	// Allocate a new object of type Foo.
 	// fooRef := nuke.New[Foo](arena)
-	arena := arena.NewMemoryBuffer[Test](1)
+	arena := arena.NewBuf[Test](1)
 	// test := gomemory.New[Test](arena)
-	mem, err := arena.New()
-	if err != nil {
-		panic(err)
-	}
-
-	test := mem
-	test.A = 1
-	test.B = 2
-	test.C = &C{
-		A: 3,
-		B: []*B{{A: 4}, {A: 5}},
-	}
+	test := arena.Store(func(t *Test) {
+		t.A = 1
+		t.B = 2
+		t.C = &C{
+			A: 3,
+			B: []*B{{A: 4}, {A: 5}},
+		}
+	})
 
 	// b := &test.C.B
 

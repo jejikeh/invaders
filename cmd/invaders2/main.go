@@ -60,6 +60,9 @@ func main() {
 	// 	runtime.KeepAlive(sprite.Image)
 	// })
 
+	// disable gc
+	// debug.SetGCPercent(-1)
+
 	engine.Run()
 
 	if *memprofile != "" {
@@ -76,7 +79,6 @@ func main() {
 }
 
 type PlayerTag struct {
-	_ int
 }
 
 func NewPlayer(engine *goengine.Engine) goecs.EntityID {

@@ -1,70 +1,239 @@
 package arena
 
 import (
+	"bytes"
+	"encoding/binary"
+	"reflect"
+	"runtime"
+	"runtime/debug"
 	"testing"
 	"unsafe"
 )
 
-func TestNewMemoryBuffer(t *testing.T) {
-	ints := NewMemoryBuffer[int](1025)
-	if ints == nil {
-		t.Error("ints is nil")
+func TestBufNew(t *testing.T) {
+	debug.SetGCPercent(1)
+
+	tests := []struct {
+		name  string
+		count int
+		data  any
+	}{
+		{
+			name:  "single int",
+			count: 1,
+			data:  int(1),
+		},
+		{
+			name:  "two int array",
+			count: 2,
+			data:  [2]int{1, 2},
+		},
+		{
+			name:  "two int slice",
+			count: 2,
+			data:  []int{1, 2},
+		},
+		{
+			name:  "two int struct",
+			count: 2,
+			data: struct {
+				x int
+				y int
+			}{1, 2},
+		},
+		{
+			name:  "two int struct pointer",
+			count: 2,
+			data: &struct {
+				x int
+				y int
+			}{1, 2},
+		},
+		{
+			name:  "two int struct pointer array",
+			count: 2,
+			data: [2]*struct {
+				x int
+				y int
+			}{{1, 2}, {3, 4}},
+		},
+		{
+			name:  "two int struct pointer slice",
+			count: 2,
+			data: []*struct {
+				x int
+				y int
+			}{{1, 2}, {3, 4}},
+		},
+		{
+			name:  "two pointer stuct",
+			count: 2,
+			data: struct {
+				x *int
+				y *int
+			}{new(int), new(int)},
+		},
 	}
 
-	x, err := ints.New()
-	if err != nil {
-		t.Error(err)
-	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			Buf := NewBuf(tt.count, tt.data)
 
-	if x == nil {
-		t.Error("x is nil")
+			if len(Buf.refs) != tt.count {
+				t.Errorf("len(Buf.refs) = %d, want %d", len(Buf.refs), tt.count)
+			}
 
-		return
-	}
+			d := Buf.Store(func(a *any) {
+				*a = tt.data
+			})
 
-	*x = 123
-	x = nil
-
-	atX := ints.At(0)
-	if atX == nil {
-		t.Error("atX is nil")
-
-		return
-	}
-
-	if *atX != 123 {
-		t.Errorf("expected %d, but got %d", 123, *atX)
+			if !reflect.DeepEqual(tt.data, *d) {
+				t.Errorf("data = %v, want %v", *d, tt.data)
+			}
+		})
 	}
 }
 
-func TestMemoryBufferAllocOneObject(t *testing.T) {
+func TestBufStorePointerOutsideBuf(t *testing.T) {
+	debug.SetGCPercent(1)
+
 	tests := []struct {
-		name string
-		data interface{}
+		name     string
+		setup    func() *Buf[any]
+		store    func(*any)
+		validate func(*testing.T, *any)
 	}{
 		{
-			name: "int",
-			data: int(123),
+			name: "store pointer outside of buffer",
+			setup: func() *Buf[any] {
+				return NewBuf[any](1, struct {
+					x *int
+					y *int
+				}{new(int), new(int)})
+			},
+			store: func(a *any) {
+				s := struct {
+					x *int
+					y *int
+				}{
+					new(int),
+					new(int),
+				}
+
+				*s.x = 2
+				*s.y = 3
+
+				*a = s
+			},
+			validate: func(t *testing.T, a *any) {
+				t.Helper()
+
+				s := (*a).(struct {
+					x *int
+					y *int
+				})
+
+				if *s.x != 2 || *s.y != 3 {
+					t.Errorf("s.x = %d, s.y = %d, want s.x = 2, s.y = 3", *s.x, *s.y)
+				}
+			},
 		},
 		{
-			name: "byte",
-			data: byte(123),
+			name: "store pointer array outside of buffer",
+			setup: func() *Buf[any] {
+				return NewBuf[any](1, [2]*struct {
+					x *int
+					y *int
+				}{{new(int), new(int)}, {new(int), new(int)}})
+			},
+			store: func(a *any) {
+				s := [2]*struct {
+					x *int
+					y *int
+				}{
+					{new(int), new(int)},
+					{new(int), new(int)},
+				}
+
+				*s[0].x = 2
+				*s[0].y = 3
+				*s[1].x = 4
+				*s[1].y = 5
+
+				*a = s
+			},
+			validate: func(t *testing.T, a *any) {
+				t.Helper()
+
+				s := (*a).([2]*struct {
+					x *int
+					y *int
+				})
+
+				if *s[0].x != 2 || *s[0].y != 3 || *s[1].x != 4 || *s[1].y != 5 {
+					t.Errorf("s[0].x = %d, s[0].y = %d, s[1].x = %d, s[1].y = %d, want s[0].x = 2, s[0].y = 3, s[1].x = 4, s[1].y = 5", *s[0].x, *s[0].y, *s[1].x, *s[1].y)
+				}
+			},
 		},
 		{
-			name: "uint32",
-			data: uint32(123),
-		},
-		{
-			name: "uint64",
-			data: uint64(123),
-		},
-		{
-			name: "float32",
-			data: new(float32),
-		},
-		{
-			name: "float64",
-			data: new(float64),
+			name: "store struct with array outside of buffer",
+			setup: func() *Buf[any] {
+				return NewBuf[any](1, struct {
+					x *int
+					y *int
+					z [2]*struct {
+						a *int
+						b *int
+					}
+				}{new(int), new(int), [2]*struct {
+					a *int
+					b *int
+				}{{new(int), new(int)}, {new(int), new(int)}}})
+			},
+			store: func(a *any) {
+				s := struct {
+					x *int
+					y *int
+					z [2]*struct {
+						a *int
+						b *int
+					}
+				}{
+					new(int),
+					new(int),
+					[2]*struct {
+						a *int
+						b *int
+					}{{new(int), new(int)}, {new(int), new(int)}},
+				}
+
+				*s.x = 2
+				*s.y = 3
+				*s.z[0].a = 4
+				*s.z[0].b = 5
+				*s.z[1].a = 6
+				*s.z[1].b = 7
+
+				*a = s
+			},
+			validate: func(t *testing.T, a *any) {
+				t.Helper()
+
+				s := (*a).(struct {
+					x *int
+					y *int
+					z [2]*struct {
+						a *int
+						b *int
+					}
+				})
+
+				if *s.x != 2 || *s.y != 3 || *s.z[0].a != 4 || *s.z[0].b != 5 || *s.z[1].a != 6 || *s.z[1].b != 7 {
+					t.Errorf("s.x = %d, s.y = %d, s.z[0].a = %d, s.z[0].b = %d, *s.z[1].a = %d, *s.z[1].b = %d, want s.x = 2, s.y = 3, s.z[0].a = 4, s.z[0].b = 5, s.z[1].a = 6, s.z[1].b = 7", *s.x, *s.y, *s.z[0].a, *s.z[0].b, *s.z[1].a, *s.z[1].b)
+				}
+			},
 		},
 	}
 
@@ -72,94 +241,91 @@ func TestMemoryBufferAllocOneObject(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			// t.Parallel()
-
-			mem := NewMemoryBufferAny(tt.data, 1024)
-			v, err := mem.New()
-
-			if err != nil {
-				t.Error(err)
-
-				return
-			}
-
-			ptr := unsafe.Pointer(v)
-
-			if ptr == nil {
-				t.Error("ptr is nil")
-
-				return
-			}
-
-			if uintptr(ptr) < uintptr(mem.start) || uintptr(ptr) > uintptr(mem.end) {
-				t.Errorf("ptr is not in arena")
-
-				return
-			}
-
-			*(*any)(ptr) = tt.data
-			if *(*any)(ptr) != tt.data {
-				t.Errorf("expected %d, but got %d", tt.data.(int), *(*int)(ptr))
-
-				return
-			}
+			Buf := tt.setup()
+			obj := Buf.Store(tt.store)
+			tt.validate(t, obj)
 		})
 	}
 }
 
-// func TestMemoryBufferAllocManyIntObjects(t *testing.T) {
-// 	mem := NewMemoryBuffer[int](1025)
-// 	var align uintptr = unsafe.Alignof(int(0))
+func TestBufPointerOutsideBuf(t *testing.T) {
+	t.Parallel()
 
-// 	for i := 0; i < 1024; i++ {
-// 		v, err := mem.Make()
-// 		if err != nil {
-// 			t.Error(err)
-// 		}
+	debug.SetGCPercent(1)
 
-// 		ptr := unsafe.Pointer(v)
+	type B struct {
+		A int
+	}
 
-// 		if ptr == nil {
-// 			t.Error("ptr is nil")
-// 		}
+	type C struct {
+		A int
+		B []*B
+	}
 
-// 		if uintptr(ptr)%align != 0 {
-// 			t.Errorf("expected %d, but got %d", 0, uintptr(ptr)%align)
-// 		}
+	type Test struct {
+		A int
+		B int
+		C *C
+	}
 
-// 		if uintptr(ptr) < uintptr(mem.start) || uintptr(ptr) > uintptr(mem.end) {
-// 			t.Errorf("ptr is not in arena")
-// 		}
+	Buf := NewBuf(1, Test{})
+	test := Buf.Store(func(t *Test) {
+		*t = Test{A: 1, B: 2, C: &C{A: 3, B: []*B{{A: 4}, {A: 5}}}}
+	})
 
-// 		*(*int)(ptr) = i
+	ptr := unsafe.Pointer(test)
 
-// 		if *(*int)(ptr) != i {
-// 			t.Errorf("expected %d, but got %d", i, *(*int)(ptr))
-// 		}
+	runtime.GC()
 
-// 		if mem.size() != uintptr(SizeOfAligned[int](i+1)) {
-// 			t.Errorf("expected %d, but got %d", uintptr(SizeOfAligned[int](i+1)), mem.size())
-// 		}
-// 	}
+	testCB1 := *(**C)(unsafe.Add(ptr, unsafe.Offsetof(test.C)))
+	if testCB1.A != 3 {
+		t.Errorf("test.C.B.A = %d, want 3", testCB1.A)
+	}
 
-// 	buf := new(bytes.Buffer)
+	if len(testCB1.B) != 2 {
+		t.Errorf("len(test.C.B) = %d, want 2", len(testCB1.B))
+	}
 
-// 	dump, err := mem.Dump(buf)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
+	if testCB1.B[0].A != 4 {
+		t.Errorf("test.C.B[0].A = %d, want 4", testCB1.B[0].A)
+	}
 
-// 	if dump != int(mem.size()) {
-// 		t.Errorf("expected %d, but got %d", mem.size(), dump)
-// 	}
+	if testCB1.B[1].A != 5 {
+		t.Errorf("test.C.B[1].A = %d, want 5", testCB1.B[1].A)
+	}
+}
 
-// 	var nums [1024]uint64
-// 	if err := binary.Read(buf, binary.LittleEndian, &nums); err != nil {
-// 		t.Error(err)
-// 	}
+func TestBufWrite(t *testing.T) {
+	t.Parallel()
 
-// 	for i := 0; i < 1024; i++ {
-// 		if nums[1023-i] != uint64(i) {
-// 			t.Errorf("expected %d, but got %d", i, nums[i])
-// 		}
-// 	}
-// }
+	Buf := NewBuf(2, uint32(0))
+
+	Buf.Store(func(i *uint32) {
+		*i = 1
+	})
+
+	Buf.Store(func(i *uint32) {
+		*i = 2
+	})
+
+	buffer := new(bytes.Buffer)
+	n, err := Buf.write(buffer)
+	if err != nil {
+		t.Fatalf("failed to write buffer: %v", err)
+	}
+
+	if n != 8 {
+		t.Errorf("n = %d, want 8", n)
+	}
+
+	// @Cleanup: The alignment is still not right.
+
+	var nums [2]uint32
+	if err := binary.Read(buffer, binary.LittleEndian, &nums); err != nil {
+		t.Fatalf("failed to read buffer: %v", err)
+	}
+
+	if nums[0] != 1 || nums[1] != 2 {
+		t.Errorf("nums = %v, want [1, 2]", nums)
+	}
+}
