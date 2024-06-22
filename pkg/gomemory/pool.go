@@ -1,7 +1,7 @@
 package gomemory
 
 import (
-	"github.com/jejikeh/invaders/pkg/gomemory/arena"
+	"github.com/jejikeh/invaders/pkg/gomemory/buf"
 )
 
 // @Cleanup: The pool memory can be corrupted, since it embed arena,
@@ -9,19 +9,19 @@ import (
 // This can be prevented to create check in pool.Allocate for correct item size passed to method
 
 type Pool[T any] struct {
-	*arena.Buf[T]
+	*buf.Buf[T]
 	items map[int]int
 }
 
 func NewPool[T any](count int, ts ...T) *Pool[T] {
 	return &Pool[T]{
-		Buf:   arena.NewBuf(count, ts...),
+		Buf:   buf.New(count, ts...),
 		items: make(map[int]int),
 	}
 }
 
 func (p *Pool[T]) StoreAt(idx int, construct ...func(*T)) *T {
-	t := p.Store(construct...)
+	t, _ := p.Store(construct...)
 	p.items[idx] = p.Length() - 1
 
 	return t

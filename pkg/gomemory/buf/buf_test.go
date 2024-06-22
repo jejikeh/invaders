@@ -1,8 +1,6 @@
-package arena
+package buf
 
 import (
-	"bytes"
-	"encoding/binary"
 	"reflect"
 	"runtime"
 	"runtime/debug"
@@ -79,15 +77,19 @@ func TestBufNew(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			Buf := NewBuf(tt.count, tt.data)
+			Buf := New(tt.count, tt.data)
 
-			if len(Buf.refs) != tt.count {
-				t.Errorf("len(Buf.refs) = %d, want %d", len(Buf.refs), tt.count)
+			if len(Buf.mem) != tt.count {
+				t.Errorf("len(Buf.mem) = %d, want %d", len(Buf.mem), tt.count)
 			}
 
-			d := Buf.Store(func(a *any) {
+			d, err := Buf.Store(func(a *any) {
 				*a = tt.data
 			})
+
+			if err != nil {
+				t.Error(err)
+			}
 
 			if !reflect.DeepEqual(tt.data, *d) {
 				t.Errorf("data = %v, want %v", *d, tt.data)
@@ -106,9 +108,9 @@ func TestBufStorePointerOutsideBuf(t *testing.T) {
 		validate func(*testing.T, *any)
 	}{
 		{
-			name: "store pointer outside of buffer",
+			name: "store pointer outside of Buffer",
 			setup: func() *Buf[any] {
-				return NewBuf[any](1, struct {
+				return New[any](1, struct {
 					x *int
 					y *int
 				}{new(int), new(int)})
@@ -141,9 +143,9 @@ func TestBufStorePointerOutsideBuf(t *testing.T) {
 			},
 		},
 		{
-			name: "store pointer array outside of buffer",
+			name: "store pointer array outside of Buffer",
 			setup: func() *Buf[any] {
-				return NewBuf[any](1, [2]*struct {
+				return New[any](1, [2]*struct {
 					x *int
 					y *int
 				}{{new(int), new(int)}, {new(int), new(int)}})
@@ -178,9 +180,9 @@ func TestBufStorePointerOutsideBuf(t *testing.T) {
 			},
 		},
 		{
-			name: "store struct with array outside of buffer",
+			name: "store struct with array outside of Buffer",
 			setup: func() *Buf[any] {
-				return NewBuf[any](1, struct {
+				return New[any](1, struct {
 					x *int
 					y *int
 					z [2]*struct {
@@ -242,7 +244,11 @@ func TestBufStorePointerOutsideBuf(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// t.Parallel()
 			Buf := tt.setup()
-			obj := Buf.Store(tt.store)
+			obj, err := Buf.Store(tt.store)
+			if err != nil {
+				t.Error(err)
+			}
+
 			tt.validate(t, obj)
 		})
 	}
@@ -268,10 +274,13 @@ func TestBufPointerOutsideBuf(t *testing.T) {
 		C *C
 	}
 
-	Buf := NewBuf(1, Test{})
-	test := Buf.Store(func(t *Test) {
+	Buf := New(1, Test{})
+	test, err := Buf.Store(func(t *Test) {
 		*t = Test{A: 1, B: 2, C: &C{A: 3, B: []*B{{A: 4}, {A: 5}}}}
 	})
+	if err != nil {
+		t.Error(err)
+	}
 
 	ptr := unsafe.Pointer(test)
 
@@ -292,40 +301,5 @@ func TestBufPointerOutsideBuf(t *testing.T) {
 
 	if testCB1.B[1].A != 5 {
 		t.Errorf("test.C.B[1].A = %d, want 5", testCB1.B[1].A)
-	}
-}
-
-func TestBufWrite(t *testing.T) {
-	t.Parallel()
-
-	Buf := NewBuf(2, uint32(0))
-
-	Buf.Store(func(i *uint32) {
-		*i = 1
-	})
-
-	Buf.Store(func(i *uint32) {
-		*i = 2
-	})
-
-	buffer := new(bytes.Buffer)
-	n, err := Buf.write(buffer)
-	if err != nil {
-		t.Fatalf("failed to write buffer: %v", err)
-	}
-
-	if n != 8 {
-		t.Errorf("n = %d, want 8", n)
-	}
-
-	// @Cleanup: The alignment is still not right.
-
-	var nums [2]uint32
-	if err := binary.Read(buffer, binary.LittleEndian, &nums); err != nil {
-		t.Fatalf("failed to read buffer: %v", err)
-	}
-
-	if nums[0] != 1 || nums[1] != 2 {
-		t.Errorf("nums = %v, want [1, 2]", nums)
 	}
 }

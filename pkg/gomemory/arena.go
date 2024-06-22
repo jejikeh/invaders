@@ -17,7 +17,7 @@ import (
 )
 
 // @Incomplete: Do not panic, return error.
-// @Cleanup: Create new structure like MemoryBuffer and move start and end to it.
+// @Cleanup: Create new structure like MemoryBuffer and move start and end to it.s
 // Because i use the same structure in pool. And the MemoryBuffer need to be finalized.
 var (
 	ErrAlignmentIsNotPowerOfTwo = errors.New("alignment size is not power of two")

@@ -1,39 +1,19 @@
 package main
 
 import (
-	"flag"
-	"log"
-	"os"
-	"runtime"
-	"runtime/pprof"
+	"math/rand/v2"
 
 	"github.com/jejikeh/invaders/pkg/goecs"
 	"github.com/jejikeh/invaders/pkg/goengine"
 	"github.com/jejikeh/invaders/pkg/gomath"
 )
 
-var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
-var memprofile = flag.String("memprofile", "", "write memory profile to `file`")
-
 func main() {
-	flag.Parse()
-	if *cpuprofile != "" {
-		f, err := os.Create(*cpuprofile)
-		if err != nil {
-			log.Fatal("could not create CPU profile: ", err)
-		}
-		defer f.Close() // error handling omitted for example
-		if err := pprof.StartCPUProfile(f); err != nil {
-			log.Fatal("could not start CPU profile: ", err)
-		}
-		defer pprof.StopCPUProfile()
-	}
-
 	engine, err := goengine.NewEngine(&goengine.Config{
 		Window: &goengine.WindowConfig{
 			Title: "Invaders",
-			Size:  gomath.NewVec2(800, 600),
-			Scale: 2,
+			Size:  gomath.NewVec2(1024, 768),
+			Scale: 1.0,
 		},
 	})
 
@@ -41,12 +21,25 @@ func main() {
 		panic(err)
 	}
 
+	for range 1 {
+		spawnPlayer(engine)
+		spawnEnemy(engine)
+	}
+
 	engine.ECS.AddSystems(movePlayer)
 
+	engine.Run()
+}
+
+type PlayerTag struct {
+	_ bool
+}
+
+func spawnPlayer(engine *goengine.Engine) {
 	player := engine.ECS.NewEntity()
 	t := goecs.Attach[goengine.Transfrom](engine.ECS, player)
-	t.Position.X = 100
-	t.Position.Y = 100
+	t.Position.X = float64(rand.Int64N(53))
+	t.Position.Y = float64(rand.Int64N(50))
 	t.Scale.X = 1
 	t.Scale.Y = 1
 
@@ -54,37 +47,20 @@ func main() {
 	sprite.Path = "/Volumes/Dev/Projects/invaders/resources/player.png"
 
 	goecs.Attach[PlayerTag](engine.ECS, player)
-
-	// runtime.SetFinalizer(sprite, func(sprite *goengine.EbitenSprite) {
-	// 	runtime.KeepAlive(sprite)
-	// 	runtime.KeepAlive(sprite.Image)
-	// })
-
-	// disable gc
-	// debug.SetGCPercent(-1)
-
-	engine.Run()
-
-	if *memprofile != "" {
-		f, err := os.Create(*memprofile)
-		if err != nil {
-			log.Fatal("could not create memory profile: ", err)
-		}
-		defer f.Close() // error handling omitted for example
-		runtime.GC()    // get up-to-date statistics
-		if err := pprof.WriteHeapProfile(f); err != nil {
-			log.Fatal("could not write memory profile: ", err)
-		}
-	}
 }
 
-type PlayerTag struct {
-}
+func spawnEnemy(engine *goengine.Engine) {
+	player := engine.ECS.NewEntity()
+	t := goecs.Attach[goengine.Transfrom](engine.ECS, player)
+	t.Position.X = float64(rand.Int64N(103))
+	t.Position.Y = float64(rand.Int64N(100))
+	t.Scale.X = 1
+	t.Scale.Y = 1
 
-func NewPlayer(engine *goengine.Engine) goecs.EntityID {
-	runtime.KeepAlive(engine)
+	sprite := goecs.Attach[goengine.EbitenSprite](engine.ECS, player)
+	sprite.Path = "/Volumes/Dev/Projects/invaders/resources/alien.png"
 
-	return goecs.EntityID(1)
+	goecs.Attach[PlayerTag](engine.ECS, player)
 }
 
 func movePlayer(layer *goecs.Layer) {
@@ -94,7 +70,9 @@ func movePlayer(layer *goecs.Layer) {
 	)
 
 	for _, entity := range entities {
+		// pt, _ := goecs.GetComponent[PlayerTag](layer, entity)
 		transform, _ := goecs.GetComponent[goengine.Transfrom](layer, entity)
-		transform.Position.X += 1
+		// transform.Position.Add(gomath.NewVec2(randomVector.X, randomVector.Y).Scale(float64(pt.m)))
+		transform.Rotation += 0.01
 	}
 }

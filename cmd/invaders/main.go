@@ -10,7 +10,7 @@ var (
 	MinorVersion string
 )
 
-const ResourseFolder = "resources/"
+const ResourseFolder = "../../resources/"
 const FontFolder = ResourseFolder + "fonts/"
 
 const AudioFolder = ResourseFolder + "audio/"
@@ -56,7 +56,7 @@ func main() {
 	Renderer = NewRender()
 	defer Renderer.Unload()
 
-	gui.LoadStyle("resources/cherry/style_cherry.rgs")
+	gui.LoadStyle(ResourseFolder + "cherry/style_cherry.rgs")
 	rl.SetExitKey(rl.KeyMinus)
 
 	Assets = NewAssetsManager()

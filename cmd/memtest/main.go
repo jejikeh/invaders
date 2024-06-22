@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"unsafe"
 
-	"github.com/jejikeh/invaders/pkg/gomemory/arena"
+	"github.com/jejikeh/invaders/pkg/gomemory/buf"
 )
 
 type B struct {
@@ -58,9 +58,9 @@ func arena1() {
 
 	// Allocate a new object of type Foo.
 	// fooRef := nuke.New[Foo](arena)
-	arena := arena.NewBuf[Test](1)
+	arena := buf.New[Test](1)
 	// test := gomemory.New[Test](arena)
-	test := arena.Store(func(t *Test) {
+	test, _ := arena.Store(func(t *Test) {
 		t.A = 1
 		t.B = 2
 		t.C = &C{

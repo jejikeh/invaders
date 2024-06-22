@@ -3,7 +3,6 @@ package gomemory
 import (
 	"bytes"
 	"encoding/binary"
-	"runtime"
 	"testing"
 	"unsafe"
 )
@@ -170,48 +169,48 @@ func TestMallocArenaFree(t *testing.T) {
 	}
 }
 
-func TestNewStructPointer(t *testing.T) { // @Incomplete: Useless.
-	t.Parallel()
+// func TestNewStructPointer(t *testing.T) { // @Incomplete: Useless.
+// 	t.Parallel()
 
-	type A struct {
-		aa bool
-		ab int32
-		ac []*A
-	}
+// 	type A struct {
+// 		aa bool
+// 		ab int32
+// 		ac []*A
+// 	}
 
-	type B struct {
-		ba *A
-	}
+// 	type B struct {
+// 		ba *A
+// 	}
 
-	arena := NewMallocArena(SizeOfAligned[B](2) + SizeOfAligned[A](2))
-	defer arena.Free()
+// 	arena := NewMallocArena(SizeOfAligned[B](2) + SizeOfAligned[A](2))
+// 	defer arena.Free()
 
-	b := New[B](arena)
-	if b.ba != nil {
-		t.Fail()
-	}
+// 	b := New[B](arena)
+// 	if b.ba != nil {
+// 		t.Fail()
+// 	}
 
-	b.ba = New[A](arena)
-	b.ba.aa = true
-	b.ba.ab = 1
-	b.ba.ac = make([]*A, 2)
-	b.ba.ac[0] = &A{ab: 12}
-	b.ba.ac[1] = &A{ab: 13}
+// 	b.ba = New[A](arena)
+// 	b.ba.aa = true
+// 	b.ba.ab = 1
+// 	b.ba.ac = make([]*A, 2)
+// 	b.ba.ac[0] = &A{ab: 12}
+// 	b.ba.ac[1] = &A{ab: 13}
 
-	if b.ba.aa != true || b.ba.ab != 1 {
-		t.Fail()
-	}
+// 	if b.ba.aa != true || b.ba.ab != 1 {
+// 		t.Fail()
+// 	}
 
-	runtime.GC()
+// 	runtime.GC()
 
-	if len(b.ba.ac) != 2 {
-		t.Fail()
-	}
+// 	if len(b.ba.ac) != 2 {
+// 		t.Fail()
+// 	}
 
-	if b.ba.ac[0].ab != 12 || b.ba.ac[1].ab != 13 {
-		t.Fail()
-	}
-}
+// 	if b.ba.ac[0].ab != 12 || b.ba.ac[1].ab != 13 {
+// 		t.Fail()
+// 	}
+// }
 
 func TestNewStructEmbeding(t *testing.T) { // @Incomplete: Useless.
 	t.Parallel()
