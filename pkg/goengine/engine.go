@@ -33,6 +33,10 @@ func NewEngine(c *Config) (*Engine, error) {
 
 	engine.ECS = goecs.NewLayer()
 
+	engine.ECS.AddSystems(updateDebugInfo)
+
+	spawnDebugInfo(engine.ECS)
+
 	return engine, err
 }
 
@@ -55,4 +59,5 @@ func (e *Engine) Update() error {
 // @Incomplete: Abstract away ebiten in engine layer
 func (e *Engine) Draw(screen *ebiten.Image) {
 	drawEbitenSprites(e, screen, e.ECS)
+	drawDebugInfo(screen, e.ECS)
 }
