@@ -8,26 +8,26 @@ import (
 // but arena allocator can allocate any type of object, and pool cannot.
 // This can be prevented to create check in pool.Allocate for correct item size passed to method
 
-type Pool[T any] struct {
-	*buf.Buf[T]
-	items map[int]int
+type Pool[K comparable, V any] struct {
+	*buf.Buf[V]
+	items map[K]int
 }
 
-func NewPool[T any](count int, ts ...T) *Pool[T] {
-	return &Pool[T]{
+func NewPool[K comparable, V any](count int, ts ...V) *Pool[K, V] {
+	return &Pool[K, V]{
 		Buf:   buf.New(count, ts...),
-		items: make(map[int]int),
+		items: make(map[K]int, count),
 	}
 }
 
-func (p *Pool[T]) StoreAt(idx int, construct ...func(*T)) *T {
+func (p *Pool[K, V]) StoreAt(idx K, construct ...func(*V)) *V {
 	t, _ := p.Store(construct...)
 	p.items[idx] = p.Length() - 1
 
 	return t
 }
 
-func (p *Pool[T]) LoadAt(idx int) (*T, bool) {
+func (p *Pool[K, V]) LoadAt(idx K) (*V, bool) {
 	bufIdx, ok := p.items[idx]
 
 	return p.Load(bufIdx), ok

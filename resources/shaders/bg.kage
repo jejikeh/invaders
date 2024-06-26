@@ -1,0 +1,12 @@
+//kage:unit pixels
+package main
+
+func Fragment(targetCoords vec4, _ vec2, _ vec4) vec4 {
+	return Gradient(targetCoords.xy)
+}
+
+func Gradient(position vec2) vec4 {
+	green := (500 - position.y)/600
+	blue  := (100-position.y/100)
+	return vec4(0, green, blue, 1.0)
+}

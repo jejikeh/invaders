@@ -21,10 +21,9 @@ func main() {
 		panic(err)
 	}
 
-	for range 1 {
-		spawnPlayer(engine)
-		spawnEnemy(engine)
-	}
+	createNewBackground(engine)
+	spawnPlayer(engine)
+	// spawnEnemy(engine)
 
 	engine.ECS.AddSystems(movePlayer)
 
@@ -61,6 +60,23 @@ func spawnEnemy(engine *goengine.Engine) {
 	sprite.Path = "/Volumes/Dev/Projects/invaders/resources/alien.png"
 
 	goecs.Attach[PlayerTag](engine.ECS, player)
+
+	shader := goecs.Attach[goengine.Shader](engine.ECS, player)
+	shader.Path = "/Volumes/Dev/Projects/invaders/resources/shaders/dissolve.kage"
+	shader.Name = "dissolve"
+}
+
+func createNewBackground(engine *goengine.Engine) {
+	bg := engine.ECS.NewEntity()
+	s := goecs.Attach[goengine.EbitenSprite](engine.ECS, bg)
+	goengine.NewScreenImage(engine, s)
+
+	t := goecs.Attach[goengine.Transfrom](engine.ECS, bg)
+	t.Scale = *gomath.NewVec2(1, 1)
+
+	shader := goecs.Attach[goengine.Shader](engine.ECS, bg)
+	shader.Path = "/Volumes/Dev/Projects/invaders/resources/shaders/bg.kage"
+	shader.Name = "bg"
 }
 
 func movePlayer(layer *goecs.Layer) {
@@ -70,9 +86,7 @@ func movePlayer(layer *goecs.Layer) {
 	)
 
 	for _, entity := range entities {
-		// pt, _ := goecs.GetComponent[PlayerTag](layer, entity)
 		transform, _ := goecs.GetComponent[goengine.Transfrom](layer, entity)
-		// transform.Position.Add(gomath.NewVec2(randomVector.X, randomVector.Y).Scale(float64(pt.m)))
 		transform.Rotation += 0.01
 	}
 }

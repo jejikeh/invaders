@@ -8,7 +8,7 @@ import (
 func TestNewObjectInPool(t *testing.T) { // @Incomplete.
 	t.Parallel()
 
-	pool := NewPool[int](1024)
+	pool := NewPool[int, int](1024)
 	x := pool.StoreAt(0)
 
 	if x == nil {
@@ -24,7 +24,7 @@ func TestNewObjectInPool(t *testing.T) { // @Incomplete.
 func TestGetObjectFromPool(t *testing.T) {
 	t.Parallel()
 
-	pool := NewPool[int](1024)
+	pool := NewPool[int, int](1024)
 	x := pool.StoreAt(0)
 	*x = 123
 
@@ -69,7 +69,7 @@ func TestGetObjectFromPool(t *testing.T) {
 func TestPool(t *testing.T) {
 	t.Parallel()
 
-	untypedPool := NewPool[int](16)
+	untypedPool := NewPool[int, int](16)
 	x := (*int)(untypedPool.StoreAt(1))
 	*x = 123
 
@@ -95,7 +95,7 @@ type Transform struct {
 func TestPoolGC(t *testing.T) {
 	t.Parallel()
 
-	pool := NewPool[Transform](2)
+	pool := NewPool[int, Transform](2)
 	allocateObject(pool)
 
 	runtime.GC()
@@ -103,14 +103,14 @@ func TestPoolGC(t *testing.T) {
 	testGetAllocatedObject(t, pool)
 }
 
-func allocateObject(pool *Pool[Transform]) {
+func allocateObject(pool *Pool[int, Transform]) {
 	t1 := pool.StoreAt(1)
 	t1.Sprite = &Sprite{
 		Path: "sprite",
 	}
 }
 
-func testGetAllocatedObject(t *testing.T, pool *Pool[Transform]) {
+func testGetAllocatedObject(t *testing.T, pool *Pool[int, Transform]) {
 	t.Helper()
 
 	t1, _ := pool.LoadAt(1)

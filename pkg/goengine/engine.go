@@ -15,13 +15,17 @@ type Engine struct {
 	window *EbitenWindow
 	ECS    *goecs.Layer
 
-	spriteBuf *gomemory.Pool[ebiten.Image]
+	time int
+
+	spriteBuf *gomemory.Pool[int, ebiten.Image]
+	shaders   *Shaders
 }
 
 func NewEngine(c *Config) (*Engine, error) {
 	engine := &Engine{
 		config:    *c,
-		spriteBuf: gomemory.NewPool[ebiten.Image](1024),
+		spriteBuf: gomemory.NewPool[int, ebiten.Image](1024),
+		shaders:   NewShaders(8),
 	}
 
 	var err error
@@ -33,6 +37,7 @@ func NewEngine(c *Config) (*Engine, error) {
 
 	engine.ECS = goecs.NewLayer()
 
+	engine.ECS.AddSystems(engine.shaders.loadShaders)
 	engine.ECS.AddSystems(updateDebugInfo)
 
 	spawnDebugInfo(engine.ECS)
@@ -51,6 +56,7 @@ func (e *Engine) Run() error {
 }
 
 func (e *Engine) Update() error {
+	e.time++
 	e.ECS.Update()
 
 	return nil
@@ -58,6 +64,8 @@ func (e *Engine) Update() error {
 
 // @Incomplete: Abstract away ebiten in engine layer
 func (e *Engine) Draw(screen *ebiten.Image) {
+	e.shaders.updateShaderUniforms(e)
+
 	drawEbitenSprites(e, screen, e.ECS)
 	drawDebugInfo(screen, e.ECS)
 }
