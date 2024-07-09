@@ -38,7 +38,7 @@ func (e *EbitenWindow) UpdateConfig(newConfig *WindowConfig) {
 		e.config = *newConfig
 	}
 
-	e.layout = gomath.NewVec2FromVec(e.config.Size).Scale(e.config.Scale)
+	e.layout = e.config.Size.Scale(e.config.Scale)
 
 	ebiten.SetWindowSize(int(e.config.Size.X), int(e.config.Size.Y))
 	ebiten.SetWindowTitle(e.config.Title)

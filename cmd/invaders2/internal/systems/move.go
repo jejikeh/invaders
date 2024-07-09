@@ -12,24 +12,30 @@ import (
 var keys = []ebiten.Key{}
 
 func Move(layer *goecs.Layer) {
-	input := inputVector()
-
 	for _, entity := range layer.Request(goecs.GetComponentID[components.Player](layer)) {
 		transform, _ := goecs.GetComponent[goengine.Transfrom](layer, entity)
 		movable, _ := goecs.GetComponent[components.Movable](layer, entity)
 
-		if input.X == 0 && input.Y == 0 {
-			movable.Velocity = movable.Velocity.Sub(
-				movable.Velocity.Mul(movable.Friction *),
-			)
-		}
+		transform.Position = transform.Position.Add(
+			movable.Direction.Scale(movable.Speed),
+		)
+	}
+}
+
+func MoveWithInput(layer *goecs.Layer) {
+	input := inputVector()
+
+	for _, entity := range layer.Request(goecs.GetComponentID[components.Player](layer)) {
+		movable, _ := goecs.GetComponent[components.Movable](layer, entity)
+
+		movable.Direction = input
 	}
 }
 
 func inputVector() gomath.Vec2 {
 	input := gomath.NewVec2(0, 0)
 
-	keys = inpututil.AppendJustPressedKeys(keys[:0])
+	keys = inpututil.AppendPressedKeys(keys[:0])
 
 	for _, k := range keys {
 		switch k {

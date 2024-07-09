@@ -14,7 +14,7 @@ func NewVec2(x, y float64) Vec2 {
 	}
 }
 
-func NewVec2FromVec(v *Vec2) Vec2 {
+func NewVec2FromVec(v Vec2) Vec2 {
 	return Vec2{
 		X: v.X,
 		Y: v.Y,

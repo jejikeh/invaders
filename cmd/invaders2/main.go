@@ -25,6 +25,7 @@ func main() {
 	components.NewPlayer(engine, gomath.NewVec2(100, 100))
 
 	engine.ECS.AddSystems(systems.Move)
+	engine.ECS.AddSystems(systems.MoveWithInput)
 
 	engine.Run()
 }
@@ -35,7 +36,7 @@ func createNewBackground(engine *goengine.Engine) {
 	goengine.NewScreenImage(engine, s)
 
 	t := goecs.Attach[goengine.Transfrom](engine.ECS, bg)
-	t.Scale = *gomath.NewVec2(1, 1)
+	t.Scale = gomath.NewVec2(1, 1)
 
 	shader := goecs.Attach[goengine.Shader](engine.ECS, bg)
 	shader.Path = "/Volumes/Dev/Projects/invaders/resources/shaders/bg.kage"
