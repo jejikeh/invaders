@@ -1,8 +1,6 @@
 package varfile
 
 import (
-	"fmt"
-	"os"
 	"strings"
 )
 
@@ -13,19 +11,10 @@ type lexer struct {
 	column   int
 }
 
-func NewLexer(filePath string) (*lexer, error) {
-	file, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("error creating lexer for %s vars : %s", filePath, err)
-	}
-
-	return newLexer(filePath, string(file)), nil
-}
-
 func newLexer(filePath string, content string) *lexer {
 	return &lexer{
 		filePath: filePath,
-		lines:    strings.Split(string(content), "\n"),
+		lines:    strings.Split(content, "\n"),
 		line:     0,
 		column:   0,
 	}

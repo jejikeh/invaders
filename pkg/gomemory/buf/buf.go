@@ -4,6 +4,8 @@ import (
 	"errors"
 	"reflect"
 	"unsafe"
+
+	"github.com/jejikeh/invaders/pkg/gomemory/rtype"
 )
 
 var ErrBufOverflow = errors.New("buffer overflow")
@@ -25,7 +27,7 @@ func New[T any](count int, ts ...T) *Buf[T] {
 		t = *new(T)
 	}
 
-	ttype := runtimeTypeOf(t)
+	ttype := rtype.GetITab(t)
 	tSize := indirectSizeof(t)
 	size := tSize * uintptr(count)
 
@@ -68,10 +70,6 @@ func (b *Buf[T]) Load(idx int) *T {
 	}
 
 	return &b.mem[idx]
-}
-
-func runtimeTypeOf(i any) uintptr {
-	return (*[2]uintptr)(unsafe.Pointer(&i))[0]
 }
 
 func indirectSizeof(t any) uintptr {

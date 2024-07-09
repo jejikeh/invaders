@@ -11,7 +11,7 @@ import (
 // in arena allocators inside gomemory.
 // @Incomplete: For now, there are no way to resize component and entity pool, so the
 
-// max count of components and entities are actually limited by bit size of ComponentID and EntityID
+// Max count of components and entities are actually limited by bit size of ComponentID and EntityID
 
 const MaxEntityCount = 1024
 

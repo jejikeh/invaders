@@ -24,7 +24,7 @@ func TestLexGroup(t *testing.T) {
 			},
 		},
 		{
-			name:  "multiline",
+			name: "multiline",
 			input: `
 [a][a]
 [b]
@@ -49,7 +49,7 @@ func TestLexGroup(t *testing.T) {
 			},
 		},
 		{
-			name:  "multiline with incomplete line",
+			name: "multiline with incomplete line",
 			input: `
 [a][a]
 [b
@@ -121,7 +121,6 @@ func TestLexGroup(t *testing.T) {
 	}
 }
 
-
 func TestLexComment(t *testing.T) {
 	t.Parallel()
 
@@ -133,10 +132,10 @@ func TestLexComment(t *testing.T) {
 		{
 			name:  "one line",
 			input: "# [comment]",
-			want: []Var{},
+			want:  []Var{},
 		},
 		{
-			name:  "multiline",
+			name: "multiline",
 			input: `
 # [comment]
 [a]
@@ -156,6 +155,7 @@ func TestLexComment(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			l := newLexer(test.name, test.input)
+
 			vars, _ := l.ParseFile()
 			if len(vars) != len(test.want) {
 				t.Errorf("expected len(vars) %d, but got %d", len(test.want), len(vars))

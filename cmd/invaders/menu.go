@@ -221,7 +221,6 @@ func (p *MenuPage) Draw() {
 	if p.DrawBoolItem(font, optionsString, yy, SmallFontSize*FontModifier) {
 		CurrentPage = &OptionsPage{}
 	}
-
 	yy += Spacing
 
 	//

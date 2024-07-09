@@ -7,13 +7,13 @@ import (
 
 type WindowConfig struct {
 	Title string
-	Size  *gomath.Vec2
+	Size  gomath.Vec2
 	Scale float64
 }
 
 type EbitenWindow struct {
 	config  WindowConfig
-	layout  *gomath.Vec2
+	layout  gomath.Vec2
 	handler *Engine
 }
 
