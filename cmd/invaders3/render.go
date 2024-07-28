@@ -2,15 +2,16 @@ package main
 
 import (
 	rl "github.com/gen2brain/raylib-go/raylib"
+	"github.com/jejikeh/invaders/pkg/engine/assets"
 )
 
 type RenderTexture struct {
 	rl.RenderTexture2D
 
-	atlas *Atlas
+	atlas *assets.Atlas
 }
 
-func NewRenderTexture(width, height int32, atlas *Atlas) RenderTexture {
+func NewRenderTexture(width, height int32, atlas *assets.Atlas) RenderTexture {
 	return RenderTexture{
 		RenderTexture2D: rl.LoadRenderTexture(width, height),
 		atlas:           atlas,
@@ -83,7 +84,7 @@ func (r RenderTexture) Func3D(camera rl.Camera3D, render func()) {
 
 // @Incomplete: Rotations are completely broken.
 func (r RenderTexture) QuadFunc(position, scale rl.Vector3, idx uint32, modifyVertex ...func(rl.Vector3) rl.Vector3) {
-	rl.SetTexture(r.atlas.texture.ID)
+	rl.SetTexture(r.atlas.Texture.ID)
 
 	rl.Color4ub(255, 255, 255, 255)
 
@@ -99,7 +100,7 @@ func (r RenderTexture) QuadFunc(position, scale rl.Vector3, idx uint32, modifyVe
 		d = f(d)
 	}
 
-	pos, size := r.atlas.getPositionAt(idx)
+	pos, size := r.atlas.UVCoords(idx)
 
 	rl.TexCoord2f(pos.X, pos.Y)
 	rl.Vertex3f(a.X, a.Y, a.Z)

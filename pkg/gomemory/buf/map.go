@@ -23,3 +23,13 @@ func (b *Map[K, V]) Get(at K) *V {
 
 	return t
 }
+
+func (b *Map[K, V]) Keys() []K {
+	keys := make([]K, 0, len(b.items))
+
+	for k := range b.items {
+		keys = append(keys, k)
+	}
+
+	return keys
+}

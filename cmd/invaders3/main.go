@@ -1,13 +1,41 @@
 package main
 
 import (
+	"embed"
+
 	rl "github.com/gen2brain/raylib-go/raylib"
+	"github.com/jejikeh/invaders/pkg/engine/assets"
+	"github.com/jejikeh/invaders/pkg/engine/log"
 )
 
-var invadersAssets AssetPaths = AssetPaths{
-	"tiles": "assets/Tilemap/tiles_packed.png",
-	"ships": "assets/Tilemap/ships_packed.png",
+//go:embed resources/*
+var resources embed.FS
+
+var assetImportScheme = []assets.Importer{
+	&assets.AtlasExport{
+		Name: "ships",
+		Path: "resources/tilemaps/ships.png",
+		SpriteCount: rl.Vector2{
+			X: 4,
+			Y: 6,
+		},
+	},
+	&assets.AtlasExport{
+		Name: "tiles",
+		Path: "resources/tilemaps/tiles.png",
+		SpriteCount: rl.Vector2{
+			X: 10,
+			Y: 12,
+		},
+	},
+	// &assets.ShaderExport{
+	// 	Name:         "grayscale",
+	// 	FragmentPath: "resources/shaders/grayscale.fs",
+	// },
 }
+
+// @Incomplete: Move to game struct or ecs system
+var invadersLog = log.New(log.LogWriter, "[invaders]")
 
 func main() {
 	// @Incomplete: Handle window config flags here. Maybe, at some point remove
@@ -28,22 +56,20 @@ func main() {
 		Projection: rl.CameraPerspective,
 	}
 
-	assets, err := NewAssets(invadersAssets)
+	assets, err := assets.Import(resources, assetImportScheme...)
 	if err != nil {
-		logger.engine.Fatal(err)
+		invadersLog.Fatal(err)
 	}
 	defer assets.Unload()
 
-	shipAtlas := NewAtlas(assets.Textures["ships"], rl.Vector2{X: 4, Y: 6})
+	gameRenderTexture := NewRenderTexture(width, height, nil)
+	defer gameRenderTexture.Unload()
 
-	gameRender := NewRenderTexture(width, height, &shipAtlas)
-	defer gameRender.Unload()
+	bgRenderTexture := NewRenderTexture(width, height, nil)
+	defer bgRenderTexture.Unload()
 
-	bgRender := NewRenderTexture(width, height, nil)
-	defer bgRender.Unload()
-
-	shipsRender := NewRenderTexture(width, height, &shipAtlas)
-	defer shipsRender.Unload()
+	shipsRenderTexture := NewRenderTexture(width, height, assets.Atlases.Get("ships"))
+	defer shipsRenderTexture.Unload()
 
 	playerPos := rl.Vector3{X: 4, Y: 7, Z: 4}
 	playerVel := rl.Vector3{X: 0, Y: 0, Z: 0}
@@ -89,7 +115,9 @@ func main() {
 
 		rl.UpdateCameraPro(&camera, cameraPos, rl.Vector3{}, 0)
 
-		bgRender.Func2D(camera, func() {
+		// rl.BeginShaderMode(*assets.Shaders.Get("grayscale"))
+
+		bgRenderTexture.Func2D(camera, func() {
 			// const size = 100
 			// for z := range size {
 			// 	z := z - size/2
@@ -113,28 +141,30 @@ func main() {
 			)
 		})
 
-		shipsRender.Func3D(camera, func() {
+		shipsRenderTexture.Func3D(camera, func() {
 			for z := range 6 {
-				shipsRender.QuadFunc(
+				shipsRenderTexture.QuadFunc(
 					rl.Vector3{Y: 3 + float32(z)/2, Z: float32(z)},
 					rl.Vector3{X: 2, Y: 1, Z: 2},
 					uint32(z),
 				)
 			}
 
-			shipsRender.QuadFunc(
+			shipsRenderTexture.QuadFunc(
 				playerPos,
 				rl.Vector3{X: 2, Y: 1, Z: 2},
-				9,
+				10,
 				func(v rl.Vector3) rl.Vector3 {
 					return rl.Vector3RotateByAxisAngle(v, rl.Vector3{X: playerPos.X, Y: playerPos.Y, Z: playerPos.Z}, playerRot)
 				},
 			)
 		})
 
-		gameRender.BlendTextures(bgRender, shipsRender)
+		// rl.EndShaderMode()
 
-		gameRender.Draw()
+		gameRenderTexture.BlendTextures(bgRenderTexture, shipsRenderTexture)
+
+		gameRenderTexture.Draw()
 	}
 }
 
@@ -144,7 +174,7 @@ func c(v float32) uint8 {
 
 const FlameSize = 0.5
 
-func initFlameParticleSystem(assets Assets, origin rl.Vector2) *ParticleSystem {
+func initFlameParticleSystem(assets assets.Assets, origin rl.Vector2) *ParticleSystem {
 	ps := &ParticleSystem{}
 
 	configFlame1 := EmitterConfig{
@@ -181,7 +211,7 @@ func initFlameParticleSystem(assets Assets, origin rl.Vector2) *ParticleSystem {
 			0.0,
 			1.2,
 		},
-		Texture:   assets.Textures["core/circle"],
+		Texture:   assets.Atlases.Get("core/circle").Texture,
 		BlendMode: rl.BlendAdditive,
 	}
 
