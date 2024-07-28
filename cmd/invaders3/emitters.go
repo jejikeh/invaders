@@ -14,7 +14,7 @@ type EmitterManager struct {
 	StartHangles  map[*ParticleSystem]func(*ParticleSystem)
 	UpdateHangles map[*ParticleSystem]func(*ParticleSystem)
 	DrawHangles   map[*ParticleSystem]func(*ParticleSystem)
-	Updates       bool
+	Enable        bool
 }
 
 func NewEmitterManager() *EmitterManager {
@@ -23,7 +23,7 @@ func NewEmitterManager() *EmitterManager {
 		StartHangles:  map[*ParticleSystem]func(*ParticleSystem){},
 		UpdateHangles: map[*ParticleSystem]func(*ParticleSystem){},
 		DrawHangles:   map[*ParticleSystem]func(*ParticleSystem){},
-		Updates:       true,
+		Enable:        true,
 	}
 }
 
@@ -67,7 +67,7 @@ func (em *EmitterManager) Start() {
 }
 
 func (em *EmitterManager) Update() {
-	if !em.Updates {
+	if !em.Enable {
 		return
 	}
 
@@ -204,7 +204,7 @@ type EmitterConfig struct {
 	EndColor             rl.Color
 	Age                  FloatRange
 	BlendMode            rl.BlendMode
-	Texture              *rl.Texture2D
+	Texture              rl.Texture2D
 	Loop                 bool
 }
 
@@ -342,7 +342,7 @@ func (e *Emitter) Draw() {
 			textureSizeY := float32(e.Config.Texture.Height) * size.Y
 
 			rl.DrawTexturePro(
-				*e.Config.Texture,
+				e.Config.Texture,
 				rl.Rectangle{
 					X:      0,
 					Y:      0,
