@@ -1,92 +1,59 @@
 package buf
 
-import (
-	"errors"
-	"reflect"
-	"unsafe"
+import "errors"
 
-	"github.com/jejikeh/invaders/pkg/gomemory/rtype"
-)
+const BufChunkSize = 1024
 
 var ErrBufOverflow = errors.New("buffer overflow")
 
-//go:linkname runtime_mallocgc runtime.mallocgc
-func runtime_mallocgc(size uintptr, typ uintptr, needzero bool) unsafe.Pointer
-
 type Buf[T any] struct {
-	mem   []T
-	tType uintptr
+	buf [][BufChunkSize]T
+
 	index int
+	bufId int
 }
 
-func New[T any](count int, ts ...T) *Buf[T] {
-	var t T
-	if len(ts) > 0 {
-		t = ts[0]
-	} else {
-		t = *new(T)
-	}
-
-	ttype := rtype.GetITab(t)
-	tSize := indirectSizeof(t)
-	size := tSize * uintptr(count)
-
+func New[T any](count int) *Buf[T] {
 	return &Buf[T]{
-		mem: ptrToSlice[T](
-			runtime_mallocgc(
-				size,
-				ttype,
-				true,
-			),
-			int(size/tSize),
-		),
-		tType: ttype,
-		index: 0,
+		buf: make([][BufChunkSize]T, count/BufChunkSize+1),
 	}
 }
 
-func (b *Buf[T]) Store(construct ...func(*T)) (*T, error) {
-	if b.index >= len(b.mem) {
-		return nil, ErrBufOverflow
+func (b *Buf[T]) New() *T {
+	if b.index >= len(b.buf[b.bufId]) {
+		b.bufId++
+		b.index = 0
 	}
 
-	t := &b.mem[b.index]
-	b.index++
-
-	for _, c := range construct {
-		c(t)
+	if b.bufId >= len(b.buf) {
+		panic(ErrBufOverflow)
 	}
 
-	return t, nil
+	defer func() {
+		b.index++
+	}()
+
+	return &b.buf[b.bufId][b.index]
 }
 
 func (b *Buf[T]) Length() int {
 	return b.index
 }
 
-func (b *Buf[T]) Load(idx int) *T {
-	if idx >= b.index {
-		return nil
+func (b *Buf[T]) Reset() {
+	b.bufId = 0
+	b.index = 0
+}
+
+func (b *Buf[T]) Clear() {
+	b.bufId = 0
+	b.index = 0
+
+	for i := range b.buf {
+		b.buf[i] = [BufChunkSize]T{}
 	}
-
-	return &b.mem[idx]
 }
 
-func indirectSizeof(t any) uintptr {
-	return reflect.Indirect(reflect.ValueOf(t)).Type().Size()
-}
-
-func ptrToSlice[T any](ptr unsafe.Pointer, count int) []T {
-	var ret []T
-	s := (*struct {
-		ptr unsafe.Pointer
-		len int
-		cap int
-	})(unsafe.Pointer(&ret))
-
-	s.ptr = ptr
-	s.cap = count
-	s.len = s.cap
-
-	return ret
+func (b *Buf[T]) Get(idx int) *T {
+	return &b.buf[b.bufId][idx]
 }

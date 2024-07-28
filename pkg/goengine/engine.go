@@ -17,14 +17,14 @@ type Engine struct {
 
 	time int
 
-	spriteBuf *gomemory.Pool[int, ebiten.Image]
+	spriteBuf *gomemory.UnsafePool[int, ebiten.Image]
 	shaders   *Shaders
 }
 
 func NewEngine(c *Config) (*Engine, error) {
 	engine := &Engine{
 		config:    *c,
-		spriteBuf: gomemory.NewPool[int, ebiten.Image](1024),
+		spriteBuf: gomemory.NewUnsafePool[int, ebiten.Image](1024),
 		shaders:   NewShaders(8),
 	}
 

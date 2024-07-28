@@ -1,19 +1,24 @@
 package main
 
-// @Incomplete: Rotations are completely broken.
-
 import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-type RenderTexture rl.RenderTexture2D
+type RenderTexture struct {
+	rl.RenderTexture2D
 
-func NewRenderTexture(width, height int32) RenderTexture {
-	return RenderTexture(rl.LoadRenderTexture(width, height))
+	atlas *Atlas
+}
+
+func NewRenderTexture(width, height int32, atlas *Atlas) RenderTexture {
+	return RenderTexture{
+		RenderTexture2D: rl.LoadRenderTexture(width, height),
+		atlas:           atlas,
+	}
 }
 
 func (r RenderTexture) Unload() {
-	rl.UnloadRenderTexture((rl.RenderTexture2D)(r))
+	rl.UnloadRenderTexture(r.RenderTexture2D)
 }
 
 func (r *RenderTexture) Draw() {
@@ -35,7 +40,7 @@ func (r RenderTexture) BlendTextures(srcs ...RenderTexture) {
 	rl.BeginBlendMode(rl.BlendAlpha)
 	defer rl.EndBlendMode()
 
-	rl.BeginTextureMode(rl.RenderTexture2D(r))
+	rl.BeginTextureMode(r.RenderTexture2D)
 	defer rl.EndTextureMode()
 
 	rl.ClearBackground(rl.Black)
@@ -52,8 +57,8 @@ func (r RenderTexture) BlendTextures(srcs ...RenderTexture) {
 	}
 }
 
-func (r RenderTexture) RenderFunc(camera rl.Camera3D, render func()) {
-	rl.BeginTextureMode(rl.RenderTexture2D(r))
+func (r RenderTexture) Func2D(camera rl.Camera3D, render func()) {
+	rl.BeginTextureMode(r.RenderTexture2D)
 	defer rl.EndTextureMode()
 
 	rl.ClearBackground(rl.Color{})
@@ -61,8 +66,8 @@ func (r RenderTexture) RenderFunc(camera rl.Camera3D, render func()) {
 	render()
 }
 
-func (r RenderTexture) Render3DFunc(camera rl.Camera3D, render func()) {
-	rl.BeginTextureMode(rl.RenderTexture2D(r))
+func (r RenderTexture) Func3D(camera rl.Camera3D, render func()) {
+	rl.BeginTextureMode(r.RenderTexture2D)
 	defer rl.EndTextureMode()
 
 	rl.BeginMode3D(camera)
@@ -76,8 +81,9 @@ func (r RenderTexture) Render3DFunc(camera rl.Camera3D, render func()) {
 	render()
 }
 
-func DrawQuad(atlas RegionAtlas, position, scale rl.Vector3, idx uint32, modifyVertex ...func(rl.Vector3) rl.Vector3) {
-	rl.SetTexture(atlas.texture.ID)
+// @Incomplete: Rotations are completely broken.
+func (r RenderTexture) QuadFunc(position, scale rl.Vector3, idx uint32, modifyVertex ...func(rl.Vector3) rl.Vector3) {
+	rl.SetTexture(r.atlas.texture.ID)
 
 	rl.Color4ub(255, 255, 255, 255)
 
@@ -93,7 +99,7 @@ func DrawQuad(atlas RegionAtlas, position, scale rl.Vector3, idx uint32, modifyV
 		d = f(d)
 	}
 
-	pos, size := atlas.getPositionAt(idx)
+	pos, size := r.atlas.getPositionAt(idx)
 
 	rl.TexCoord2f(pos.X, pos.Y)
 	rl.Vertex3f(a.X, a.Y, a.Z)

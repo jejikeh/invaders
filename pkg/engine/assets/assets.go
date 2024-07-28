@@ -1,14 +1,23 @@
-package main
+package assets
 
 import (
-	"embed"
 	"path/filepath"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-//go:embed assets/*
-var assets embed.FS
+type Texture struct {
+	rl.Texture2D
+
+	path string
+	name string
+
+	dimensions rl.Vector2
+}
+
+type Config[T any] struct {
+	asset T
+}
 
 type AssetPaths map[string]string
 
@@ -73,4 +82,19 @@ func (a *Assets) loadShader(vertex, fragment []byte, name string) {
 
 	shader := rl.LoadShaderFromMemory(string(vertex), string(fragment))
 	a.Shaders[name] = shader
+}
+
+type Atlas struct {
+	texture    rl.Texture2D
+	dimensions rl.Vector2
+}
+
+func (a Atlas) getPositionAt(idx uint32) (pos, size rl.Vector2) {
+	size.X = 1.0 / a.dimensions.X
+	size.Y = 1.0 / a.dimensions.Y
+
+	return rl.Vector2{
+		X: float32(idx%uint32(a.dimensions.X)) * size.X,
+		Y: float32(idx/uint32(a.dimensions.X)) * size.Y,
+	}, size
 }

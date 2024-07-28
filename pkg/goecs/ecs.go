@@ -27,11 +27,11 @@ type EntityInfo struct {
 type System = func(*Layer)
 
 type Layer struct {
-	componentPool []*gomemory.Pool[int, any]
+	componentPool []*gomemory.UnsafePool[int, any]
 	componentIDs  map[string]ComponentID
 
 	// @Incomplete: I use TypedPool here because in the future the entities can be removed, though it can be replaced by Arena in the future
-	entities *gomemory.Pool[int, EntityInfo]
+	entities *gomemory.UnsafePool[int, EntityInfo]
 	// @Incomplete: For now, systems cannot be removed or disabled at runtime
 	systems []System
 }
@@ -39,9 +39,9 @@ type Layer struct {
 func NewLayer(systems ...System) *Layer {
 	return &Layer{
 		// @Incomplete: We could store this data manually to give complete ownership of memory to Layer?
-		componentPool: make([]*gomemory.Pool[int, any], gomemory.Sizeof(ComponentID(0))),
+		componentPool: make([]*gomemory.UnsafePool[int, any], gomemory.Sizeof(ComponentID(0))),
 		componentIDs:  make(map[string]ComponentID, gomemory.Sizeof(ComponentID(0))),
-		entities:      gomemory.NewPool[int, EntityInfo](MaxEntityCount),
+		entities:      gomemory.NewUnsafePool[int, EntityInfo](MaxEntityCount),
 		systems:       systems,
 	}
 }
@@ -68,7 +68,7 @@ func Attach[T any](layer *Layer, entityID EntityID) *T {
 	if layer.componentPool[componentID] == nil {
 		// @Cleanup: https://www.david-colson.com/2020/02/09/making-a-simple-ecs.html
 		// Potential improvements and alternatives
-		layer.componentPool[componentID] = gomemory.NewPool[int, any](MaxEntityCount, new(T))
+		layer.componentPool[componentID] = gomemory.NewUnsafePool[int, any](MaxEntityCount, new(T))
 	}
 
 	componentPool := layer.componentPool[componentID]

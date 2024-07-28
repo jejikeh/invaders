@@ -36,13 +36,13 @@ func main() {
 
 	shipAtlas := NewAtlas(assets.Textures["ships"], rl.Vector2{X: 4, Y: 6})
 
-	gameRender := NewRenderTexture(width, height)
+	gameRender := NewRenderTexture(width, height, &shipAtlas)
 	defer gameRender.Unload()
 
-	bgRender := NewRenderTexture(width, height)
+	bgRender := NewRenderTexture(width, height, nil)
 	defer bgRender.Unload()
 
-	shipsRender := NewRenderTexture(width, height)
+	shipsRender := NewRenderTexture(width, height, &shipAtlas)
 	defer shipsRender.Unload()
 
 	playerPos := rl.Vector3{X: 4, Y: 7, Z: 4}
@@ -89,7 +89,7 @@ func main() {
 
 		rl.UpdateCameraPro(&camera, cameraPos, rl.Vector3{}, 0)
 
-		bgRender.RenderFunc(camera, func() {
+		bgRender.Func2D(camera, func() {
 			// const size = 100
 			// for z := range size {
 			// 	z := z - size/2
@@ -113,18 +113,16 @@ func main() {
 			)
 		})
 
-		shipsRender.Render3DFunc(camera, func() {
+		shipsRender.Func3D(camera, func() {
 			for z := range 6 {
-				DrawQuad(
-					shipAtlas,
+				shipsRender.QuadFunc(
 					rl.Vector3{Y: 3 + float32(z)/2, Z: float32(z)},
 					rl.Vector3{X: 2, Y: 1, Z: 2},
 					uint32(z),
 				)
 			}
 
-			DrawQuad(
-				shipAtlas,
+			shipsRender.QuadFunc(
 				playerPos,
 				rl.Vector3{X: 2, Y: 1, Z: 2},
 				9,

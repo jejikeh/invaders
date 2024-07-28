@@ -12,15 +12,15 @@ import (
 // Maybe, we can separate asset loading and declare loading system for each asset differently?
 
 type Shaders struct {
-	*gomemory.Pool[string, ebiten.Shader]
+	*gomemory.UnsafePool[string, ebiten.Shader]
 	idx      map[string]int
 	uniforms map[string]any
 }
 
 func NewShaders(count int) *Shaders {
 	return &Shaders{
-		Pool: gomemory.NewPool[string, ebiten.Shader](count),
-		idx:  make(map[string]int),
+		UnsafePool: gomemory.NewUnsafePool[string, ebiten.Shader](count),
+		idx:        make(map[string]int),
 		uniforms: map[string]any{
 			"Time": 0.0,
 		},
