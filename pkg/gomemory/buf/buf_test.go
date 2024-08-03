@@ -98,7 +98,7 @@ func TestBufReset(t *testing.T) {
 				*a = tt.data
 			}
 
-			length := b.Length()
+			length := b.Len()
 			if length != tt.count {
 				t.Errorf("buf.New() = %v, want %v", length, tt.count)
 			}
@@ -150,7 +150,7 @@ func TestBufClear(t *testing.T) {
 
 			b.Clear()
 
-			length := b.Length()
+			length := b.Len()
 			if length != 0 {
 				t.Errorf("buf.New() = %v, want %v", length, 0)
 			}

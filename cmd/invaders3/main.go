@@ -28,13 +28,9 @@ var assetImportScheme = []assets.Importer{
 			Y: 12,
 		},
 	},
-	// &assets.ShaderExport{
-	// 	Name:         "grayscale",
-	// 	FragmentPath: "resources/shaders/grayscale.fs",
-	// },
 }
 
-// @Incomplete: Move to game struct or ecs system
+// @Incomplete: Move to game struct or ecs system.
 var invadersLog = log.New(log.LogWriter, "[invaders]")
 
 func main() {

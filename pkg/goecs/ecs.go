@@ -6,7 +6,7 @@ import (
 	"github.com/jejikeh/invaders/pkg/gomemory"
 )
 
-// @Incomplete: For now, there are no way to delete entities in the layer.
+// @Incomplete: For now, there are no ways to delete entities from the layer.
 // For deleting, it might be needed to implement some sort of free-list tracking
 // in arena allocators inside gomemory.
 // @Incomplete: For now, there are no way to resize component and entity pool, so the
@@ -139,8 +139,8 @@ func (l *Layer) Update() {
 	}
 }
 
-// @Cleanup: When Go 1.23 comes out, rewrite this all to iterators.
-// @Incomplete: For now it is very stupid straightforward implementation.
+// @Cleanup: When Go 1.23 come out, rewrite this to iterators.
+// @Incomplete: For now it is very straightforward stupid  implementation.
 
 // @Incomplete: We could have some state in systems, for cache component IDs and etc.
 func (l *Layer) Request(components ...ComponentID) []EntityID {

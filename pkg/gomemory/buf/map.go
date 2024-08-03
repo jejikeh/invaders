@@ -19,7 +19,7 @@ func (b *Map[K, V]) Get(at K) *V {
 	}
 
 	t := b.Buf.New()
-	b.items[at] = b.Buf.Length() - 1
+	b.items[at] = b.Buf.Len() - 1
 
 	return t
 }

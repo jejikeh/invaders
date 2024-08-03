@@ -36,7 +36,7 @@ func (b *Buf[T]) New() *T {
 	return &b.buf[b.bufId][b.index]
 }
 
-func (b *Buf[T]) Length() int {
+func (b *Buf[T]) Len() int {
 	return b.index
 }
 
