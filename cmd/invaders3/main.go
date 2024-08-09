@@ -114,19 +114,6 @@ func main() {
 		// rl.BeginShaderMode(*assets.Shaders.Get("grayscale"))
 
 		bgRenderTexture.Func2D(camera, func() {
-			// const size = 100
-			// for z := range size {
-			// 	z := z - size/2
-			// 	for x := range size {
-			// 		x := x - size/2
-			// 		DrawQuad(
-			// 			tilesAtlas,
-			// 			rl.Vector3{X: float32(x), Y: 0.2, Z: float32(z)},
-			// 			rl.Vector3{X: 1, Y: 1, Z: 1},
-			// 			(12*10)-10,
-			// 		)
-			// 	}
-			// }
 			rl.DrawRectangleGradientV(
 				0,
 				0,
@@ -166,84 +153,4 @@ func main() {
 
 func c(v float32) uint8 {
 	return uint8(v * 255)
-}
-
-const FlameSize = 0.5
-
-func initFlameParticleSystem(assets assets.Assets, origin rl.Vector2) *ParticleSystem {
-	ps := &ParticleSystem{}
-
-	configFlame1 := EmitterConfig{
-		Loop:         true,
-		StartSize:    rl.NewVector2(2*FlameSize, 2*FlameSize),
-		EndSize:      rl.NewVector2(1*FlameSize, 1*FlameSize),
-		Capacity:     100,
-		EmmisionRate: 500,
-		Origin:       origin,
-		OriginAcceleration: [2]float32{
-			50,
-			100,
-		},
-		Offset: [2]float32{
-			0,
-			10,
-		},
-		Direction: rl.NewVector2(0, -1),
-		DirectionAngle: [2]float32{
-			90,
-			90,
-		},
-		Velocity: [2]float32{
-			30,
-			150,
-		},
-		VelocityAngle: [2]float32{
-			90,
-			90,
-		},
-		StartColor: rl.NewColor(255, 20, 0, 255),
-		EndColor:   rl.NewColor(255, 20, 0, 0),
-		Age: [2]float32{
-			0.0,
-			1.2,
-		},
-		Texture:   assets.Atlases.Get("core/circle").Texture,
-		BlendMode: rl.BlendAdditive,
-	}
-
-	emitterFlame1 := NewEmitter(configFlame1)
-
-	configFlame2 := configFlame1
-	configFlame2.StartSize = rl.NewVector2(2*FlameSize, 2*FlameSize)
-	configFlame2.EndSize = rl.NewVector2(0*FlameSize, 0*FlameSize)
-	configFlame2.Capacity = 20
-	configFlame2.EmmisionRate = 20
-	configFlame2.StartColor = rl.NewColor(255, 255, 255, 10)
-	configFlame2.EndColor = rl.NewColor(255, 255, 255, 0)
-	configFlame2.Age = [2]float32{
-		0.0,
-		1.0,
-	}
-
-	emitterFlame2 := NewEmitter(configFlame2)
-
-	configSmokeEmitter := configFlame2
-	configSmokeEmitter.StartSize = rl.NewVector2(2*FlameSize, 2*FlameSize)
-	configSmokeEmitter.EndSize = rl.NewVector2(1*FlameSize, 1*FlameSize)
-	configSmokeEmitter.Capacity = 100
-	configSmokeEmitter.EmmisionRate = 100
-	configSmokeEmitter.StartColor = rl.NewColor(125, 125, 125, 30)
-	configSmokeEmitter.EndColor = rl.NewColor(125, 125, 125, 10)
-	configSmokeEmitter.Age = [2]float32{
-		0.0,
-		1.5,
-	}
-
-	smokeEmitter := NewEmitter(configSmokeEmitter)
-
-	ps.Add(emitterFlame1)
-	ps.Add(smokeEmitter)
-	ps.Add(emitterFlame2)
-
-	return ps
 }
